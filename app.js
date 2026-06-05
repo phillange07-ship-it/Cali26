@@ -40,7 +40,9 @@ async function hydrateSpots() {
     return;
   }
   if (Array.isArray(data) && data.length) {
-    spots = data;
+    const merged = new Map(initialSpots.map((spot) => [spot.id, spot]));
+    data.forEach((spot) => merged.set(spot.id, { ...merged.get(spot.id), ...spot }));
+    spots = Array.from(merged.values());
   }
 }
 
@@ -62,6 +64,60 @@ function persistLocalItineraryOverrides(rows) {
   localStorage.setItem(LOCAL_ITINERARY_KEY, JSON.stringify(rows));
 }
 
+function escapeHtml(value = '') {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function normalizePlanItems(value, fallbackText = '') {
+  if (Array.isArray(value)) {
+    return value.map((item, index) => ({
+      id: item.id || `plan-item-${index + 1}`,
+      type: item.type || 'note',
+      title: item.title || '',
+      spot_id: item.spot_id || '',
+      address: item.address || '',
+      note: item.note || ''
+    }));
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      return normalizePlanItems(JSON.parse(value));
+    } catch {
+      return [];
+    }
+  }
+
+  if (fallbackText.trim()) {
+    return fallbackText
+      .split('\n')
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((title, index) => ({
+        id: `legacy-item-${index + 1}`,
+        type: 'note',
+        title,
+        spot_id: '',
+        address: '',
+        note: ''
+      }));
+  }
+
+  return [];
+}
+
+function planItemsToLegacyText(items) {
+  return items
+    .map((item) => item.title?.trim() || item.note?.trim() || '')
+    .filter(Boolean)
+    .join('\n');
+}
+
 function applyItineraryOverrides(rows) {
   rows.forEach((row) => {
     const day = itinerary.find((entry) => entry.date === row.date);
@@ -70,6 +126,7 @@ function applyItineraryOverrides(rows) {
     day.summary = row.summary || day.summary;
     day.notes = row.notes || '';
     day.plan_items_text = row.plan_items_text || '';
+    day.plan_items = normalizePlanItems(row.plan_items_json, row.plan_items_text || '');
   });
 }
 
@@ -187,7 +244,7 @@ function getTripPhaseSummary() {
   }
 
   if (afterTrip) {
-    return { label: 'Reise', value: 'Reise abgeschlossen', detail: `Rueckflug war am ${dateShort(returnDate)}` };
+    return { label: 'Reise', value: 'Reise abgeschlossen', detail: `Rückflug war am ${dateShort(returnDate)}` };
   }
 
   const todayPlan = duringTrip ? (itinerary.find((day) => day.date === today) || getTodayPlan()) : getTodayPlan();
@@ -195,18 +252,18 @@ function getTripPhaseSummary() {
   return {
     label: 'Heute',
     value: todayPlan.title,
-    detail: nextPlan ? `Als naechstes: ${nextPlan.title} am ${dateShort(nextPlan.date)}` : `Rueckflug um ${returnFlight?.depart || '--:--'} ab LAX`
+      detail: nextPlan ? `Als nächstes: ${nextPlan.title} am ${dateShort(nextPlan.date)}` : `Rückflug um ${returnFlight?.depart || '--:--'} ab LAX`
   };
 }
 
 function getStorageHintText() {
   if (supabaseClient) {
-    return 'Aktuell: Supabase aktiv. GitHub Pages bleibt statisch, Ausgaben, Beteiligte und Bon-Fotos laufen direkt ueber Supabase.';
+    return 'Aktuell: Supabase aktiv. GitHub Pages bleibt statisch, Ausgaben, Beteiligte und Bon-Fotos laufen direkt über Supabase.';
   }
   if (config.SUPABASE_ENABLED) {
     return 'Supabase ist konfiguriert, konnte aber hier gerade nicht initialisiert werden. Bitte Seite hart neu laden.';
   }
-  return 'Aktuell: lokaler Demo-Speicher. Fuer gemeinsame Ausgaben, Beteiligte und Bon-Fotos bitte Supabase in config.js aktivieren.';
+  return 'Aktuell: lokaler Demo-Speicher. Für gemeinsame Ausgaben, Beteiligte und Bon-Fotos bitte Supabase in config.js aktivieren.';
 }
 
 function getReceiptUrl(expense) {
@@ -379,7 +436,7 @@ function getSplitDraft() {
   const subtotal = Math.max(0, total - tip);
 
   if (tip > total) {
-    return { ok: false, message: 'Der Tip kann nicht groesser als der Gesamtbetrag sein.' };
+    return { ok: false, message: 'Der Tip kann nicht größer als der Gesamtbetrag sein.' };
   }
 
   if (!participants.length) {
@@ -448,16 +505,16 @@ function fillSpotCategories() {
     .join('');
 }
 
-function setSpotPanelState(panelId, buttonId, isOpen) {
+function setPanelState(panelId, buttonId, isOpen) {
   const panel = $(panelId);
   const button = $(buttonId);
   panel.hidden = !isOpen;
   button.setAttribute('aria-expanded', String(isOpen));
 }
 
-function toggleSpotPanel(panelId, buttonId) {
+function togglePanel(panelId, buttonId) {
   const panel = $(panelId);
-  setSpotPanelState(panelId, buttonId, panel.hidden);
+  setPanelState(panelId, buttonId, panel.hidden);
 }
 
 function resetSpotForm() {
@@ -481,8 +538,8 @@ function editSpot(spotId) {
   $('spot-form-title').textContent = 'Spot bearbeiten';
   $('spot-submit').textContent = 'Spot aktualisieren';
   $('spot-cancel-edit').hidden = false;
-  $('spot-status').textContent = 'Aenderungen werden direkt fuer alle gespeichert.';
-  setSpotPanelState('spot-form-panel', 'toggle-spot-form', true);
+  $('spot-status').textContent = 'Änderungen werden direkt für alle gespeichert.';
+  setPanelState('spot-form-panel', 'toggle-spot-form', true);
   $('spot-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -628,7 +685,7 @@ function renderTripStatus() {
     {
       label: 'Unterkunftswechsel',
       value: getAccommodationCountdownLabel(),
-      detail: nextStay ? `${beforeTrip ? 'Erster Check-in' : 'Naechster Wechsel'}: ${dateShort(nextStay.start)} nach ${nextStay.city}` : 'Kein weiterer Wechsel'
+      detail: nextStay ? `${beforeTrip ? 'Erster Check-in' : 'Nächster Wechsel'}: ${dateShort(nextStay.start)} nach ${nextStay.city}` : 'Kein weiterer Wechsel'
     },
     {
       label: beforeTrip ? 'Starttag' : 'Heutige Spots',
@@ -665,7 +722,7 @@ function renderToday() {
   $('today-route-list').innerHTML = plan.route.map((spotId, i) => {
     const s = byId(spotId);
     if (!s) {
-      return `<li><span class="step">${i + 1}</span><div><b>Spot fehlt</b><small>Dieser Routeintrag existiert aktuell nicht mehr in den Spots.</small></div></li>`;
+      return `<li><span class="step">${i + 1}</span><div><b>Spot fehlt</b><small>Dieser Routeneintrag existiert aktuell nicht mehr in den Spots.</small></div></li>`;
     }
     const c = categories[s.category];
     return `<li><span class="step">${i + 1}</span><div><b>${c.icon} ${s.name}</b><small>${s.note}</small><br><a class="map-link secondary" target="_blank" href="${googleMapsLink(s)}">Route öffnen</a></div></li>`;
@@ -677,12 +734,105 @@ function renderToday() {
 
 function fillDayPlanForm() {
   const selected = getSelectedPlan();
+  selected.plan_items = normalizePlanItems(selected.plan_items, selected.plan_items_text || '');
   $('day-plan-date').value = selected.date;
   $('day-plan-title').value = selected.title || '';
   $('day-plan-summary').value = selected.summary || '';
   $('day-plan-notes').value = selected.notes || '';
-  $('day-plan-items').value = selected.plan_items_text || '';
   $('day-plan-status').textContent = 'Diese Planung wird mit allen geteilt.';
+  renderDayPlanItemsEditor(selected.plan_items, selected.route);
+}
+
+function buildDayPlanItem(item = {}) {
+  return {
+    id: item.id || crypto.randomUUID(),
+    type: item.type || 'note',
+    title: item.title || '',
+    spot_id: item.spot_id || '',
+    address: item.address || '',
+    note: item.note || ''
+  };
+}
+
+function updateDayPlanItemVisibility(itemElement) {
+  const type = itemElement.querySelector('.day-plan-item-type')?.value || 'note';
+  itemElement.querySelectorAll('.day-plan-type-fields').forEach((section) => {
+    section.hidden = section.dataset.type !== type;
+  });
+}
+
+function getSelectableDayPlanSpots(selectedRoute = [], currentSpotId = '') {
+  const blocked = new Set(selectedRoute);
+  return spots.filter((spot) => {
+    if (['stay', 'travel'].includes(spot.category)) return false;
+    if (spot.id === currentSpotId) return true;
+    return !blocked.has(spot.id);
+  });
+}
+
+function createDayPlanItemEditor(item = {}, selectedRoute = []) {
+  const normalized = buildDayPlanItem(item);
+  const selectableSpots = getSelectableDayPlanSpots(selectedRoute, normalized.spot_id);
+  const wrapper = document.createElement('div');
+  wrapper.className = 'day-plan-item';
+  wrapper.dataset.planItemId = normalized.id;
+
+  wrapper.innerHTML = `
+    <div class="day-plan-item-head">
+      <strong>Punkt</strong>
+      <button class="secondary" type="button" data-remove-day-plan-item>Entfernen</button>
+    </div>
+    <div class="day-plan-item-grid">
+      <label class="full">Titel
+        <input class="day-plan-item-title" type="text" value="${escapeHtml(normalized.title)}" placeholder="z. B. Morgens einkaufen" />
+      </label>
+      <label>Typ
+        <select class="day-plan-item-type">
+          <option value="note"${normalized.type === 'note' ? ' selected' : ''}>Freier Punkt</option>
+          <option value="spot"${normalized.type === 'spot' ? ' selected' : ''}>Bestehender Spot</option>
+          <option value="address"${normalized.type === 'address' ? ' selected' : ''}>Adresse / Maps-Link</option>
+        </select>
+      </label>
+      <label class="day-plan-type-fields full" data-type="spot">Spot
+        <select class="day-plan-item-spot">
+          <option value="">Spot auswählen</option>
+          ${selectableSpots.map((spot) => `<option value="${escapeHtml(spot.id)}"${normalized.spot_id === spot.id ? ' selected' : ''}>${escapeHtml(spot.name)}</option>`).join('')}
+        </select>
+      </label>
+      <label class="day-plan-type-fields full" data-type="address">Adresse oder Google-Maps-Link
+        <textarea class="day-plan-item-address" rows="3" placeholder="Adresse oder Maps-Link">${escapeHtml(normalized.address)}</textarea>
+      </label>
+      <label class="full">Hinweis
+        <input class="day-plan-item-note" type="text" value="${escapeHtml(normalized.note)}" placeholder="z. B. vorher Tickets prüfen oder Parken" />
+      </label>
+    </div>
+  `;
+
+  wrapper.querySelector('.day-plan-item-type')?.addEventListener('change', () => updateDayPlanItemVisibility(wrapper));
+  wrapper.querySelector('[data-remove-day-plan-item]')?.addEventListener('click', () => {
+    wrapper.remove();
+    if (!$('day-plan-items-list').children.length) renderDayPlanItemsEditor([buildDayPlanItem()], getSelectedPlan().route);
+  });
+  updateDayPlanItemVisibility(wrapper);
+  return wrapper;
+}
+
+function renderDayPlanItemsEditor(items = [], selectedRoute = []) {
+  const list = $('day-plan-items-list');
+  list.innerHTML = '';
+  const source = items.length ? items : [buildDayPlanItem()];
+  source.forEach((item) => list.appendChild(createDayPlanItemEditor(item, selectedRoute)));
+}
+
+function collectDayPlanItems() {
+  return Array.from(document.querySelectorAll('.day-plan-item')).map((itemElement) => ({
+    id: itemElement.dataset.planItemId || crypto.randomUUID(),
+    type: itemElement.querySelector('.day-plan-item-type')?.value || 'note',
+    title: itemElement.querySelector('.day-plan-item-title')?.value.trim() || '',
+    spot_id: itemElement.querySelector('.day-plan-item-spot')?.value || '',
+    address: itemElement.querySelector('.day-plan-item-address')?.value.trim() || '',
+    note: itemElement.querySelector('.day-plan-item-note')?.value.trim() || ''
+  })).filter((item) => item.title || item.spot_id || item.address || item.note);
 }
 
 function renderTripOverview() {
@@ -742,13 +892,27 @@ function renderItinerary() {
     return `<li><b>${i + 1}. ${c.icon} ${s.name}</b><br><small>${s.note}</small> <a target="_blank" href="${googleMapsLink(s)}">Route</a></li>`;
   }).join('');
 
+  const plannedItems = normalizePlanItems(selected.plan_items, selected.plan_items_text || '');
+  const plannedRouteItems = plannedItems.map((item, index) => {
+    if (item.type === 'spot' && item.spot_id) {
+      const spot = byId(item.spot_id);
+      if (!spot) return `<li><b>${index + 1}. ${escapeHtml(item.title || 'Geplanter Spot')}</b><br><small>Der verknüpfte Spot existiert aktuell nicht mehr.</small></li>`;
+      const category = categories[spot.category] || { icon: '📍' };
+      return `<li><b>${index + 1}. ${category.icon} ${escapeHtml(item.title || spot.name)}</b><br><small>${escapeHtml(item.note || spot.note || '')}</small> <a target="_blank" href="${googleMapsLink(spot)}">Route</a></li>`;
+    }
+    if (item.type === 'address' && item.address) {
+      return `<li><b>${index + 1}. ${escapeHtml(item.title || 'Adresse')}</b><br><small>${escapeHtml(item.note || item.address)}</small> <a target="_blank" href="${googleMapsAddressLink(item.address)}">Route</a></li>`;
+    }
+    return `<li><b>${index + 1}. ${escapeHtml(item.title || 'Freier Punkt')}</b>${item.note ? `<br><small>${escapeHtml(item.note)}</small>` : ''}</li>`;
+  }).join('');
+
   $('selected-day-detail').innerHTML = `
     <p class="eyebrow">Ausgewählter Tag · ${new Date(selected.date + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' })}</p>
     <h3>${selected.title}</h3>
     <p>${selected.summary}</p>
     ${selected.notes ? `<p>${selected.notes}</p>` : ''}
     <ol>${routeDetail}</ol>
-    ${selected.plan_items_text ? `<ul>${selected.plan_items_text.split('\n').map((item) => item.trim()).filter(Boolean).map((item) => `<li>${item}</li>`).join('')}</ul>` : ''}
+    ${plannedRouteItems ? `<ul class="day-plan-route-list">${plannedRouteItems}</ul>` : ''}
   `;
   fillDayPlanForm();
   renderTripStatus();
@@ -785,6 +949,11 @@ function googleMapsLink(spot) {
   const destination = `${spot.lat},${spot.lng}`;
   const origin = userPosition ? `&origin=${userPosition.lat},${userPosition.lng}` : '';
   return `https://www.google.com/maps/dir/?api=1${origin}&destination=${destination}&travelmode=driving`;
+}
+
+function googleMapsAddressLink(address) {
+  const origin = userPosition ? `&origin=${userPosition.lat},${userPosition.lng}` : '';
+  return `https://www.google.com/maps/dir/?api=1${origin}&destination=${encodeURIComponent(address)}&travelmode=driving`;
 }
 
 function popupMarkup(spot) {
@@ -1038,14 +1207,46 @@ async function saveExpense(expense, receiptFile) {
   renderExpenses();
 }
 
+async function deleteExpense(expenseId) {
+  if (!expenseId) return;
+
+  if (supabaseClient) {
+    const expensesTable = config.SUPABASE_EXPENSES_TABLE || 'expenses';
+    const { error } = await supabaseClient.from(expensesTable).delete().eq('id', expenseId);
+    if (error) {
+      alert(`Ausgabe konnte nicht gelöscht werden: ${error.message}`);
+      return;
+    }
+  } else {
+    const expenses = JSON.parse(localStorage.getItem(LOCAL_EXPENSES_KEY) || '[]');
+    localStorage.setItem(LOCAL_EXPENSES_KEY, JSON.stringify(expenses.filter((expense) => expense.id !== expenseId)));
+  }
+
+  renderExpenses();
+}
+
 async function renderExpenses() {
   const expenses = await loadExpenses();
   $('expense-list').innerHTML = expenses.length ? expenses.map((e) => `
     <div class="expense-item">
       <div><b>${e.description}</b><br><small>${e.person} · ${e.category} · ${new Date(e.date || e.created_at).toLocaleDateString('de-DE')}</small><br><small>Ohne Tip: ${currency(e.subtotal_amount || Number(e.amount) - Number(e.tip_amount || 0))} · Tip: ${currency(e.tip_amount || 0)}${Number(e.participant_count || 0) > 0 ? ` · ${currency((Number(e.tip_amount || 0) / Number(e.participant_count || 1)) || 0)} pro Person` : ''}</small><br><small>${(e.splits?.length ? e.splits.map((split) => `${split.person}: ${currency(split.total_amount)} (${currency(split.food_amount || 0)} + ${currency(split.tip_amount || 0)} Tip)`).join(' · ') : `${e.participant_count || 1} Beteiligte`)}</small>${getReceiptUrl(e) ? `<br><a target="_blank" rel="noreferrer" href="${getReceiptUrl(e)}">Bon ansehen</a>` : ''}</div>
-      <strong>${currency(e.amount)}</strong>
+      <div>
+        <strong>${currency(e.amount)}</strong>
+        <br>
+        <button class="tiny expense-delete" type="button" data-expense-id="${e.id}" data-expense-description="${(e.description || '').replace(/"/g, '&quot;')}">Löschen…</button>
+      </div>
     </div>
   `).join('') : '<p class="hint">Noch keine Ausgaben eingetragen.</p>';
+
+  document.querySelectorAll('.expense-delete').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const label = button.dataset.expenseDescription || 'diesen Beleg';
+      const typed = window.prompt(`Zum Löschen von "${label}" bitte LÖSCHEN eingeben.`);
+      if (typed !== 'LÖSCHEN') return;
+      await deleteExpense(button.dataset.expenseId);
+    });
+  });
+
   renderSettlement(expenses);
 }
 
@@ -1110,7 +1311,7 @@ function renderSettlement(expenses) {
     <p>Gesamt: <b>${currency(total)}</b> · Tip gesamt: <b>${currency(totalTip)}</b> · Berechnet nach echten Beteiligungen pro Beleg.</p>
     <div class="settlement-grid">${people.map(p => `<div class="settle-card"><b>${p}</b><br>${currency(paidTotals[p])} gezahlt<br>${currency(owedTotals[p])} konsumiert<br>${currency(tipTotals[p])} Tip-Anteil<br><small>${currency(balances.find((entry) => entry.person === p)?.balance || 0)} Balance</small></div>`).join('')}</div>
     <h3>Wer zahlt wem?</h3>
-    <p class="hint">Die Liste ist belegbasiert: Jede Person zahlt an die Person zurueck, die den jeweiligen Beleg vorgestreckt hat. Gegenseitige Schulden zwischen denselben zwei Personen werden dabei verrechnet.</p>
+    <p class="hint">Die Liste ist belegbasiert: Jede Person zahlt an die Person zurück, die den jeweiligen Beleg vorgestreckt hat. Gegenseitige Schulden zwischen denselben zwei Personen werden dabei verrechnet.</p>
     ${transfers.length ? `<ul>${transfers.map(t => `<li>${t}</li>`).join('')}</ul>` : '<p class="hint">Aktuell ist alles ausgeglichen oder es gibt noch keine Ausgaben.</p>'}
   `;
 }
@@ -1123,18 +1324,22 @@ async function saveDayPlan() {
     return;
   }
 
+  const planItems = collectDayPlanItems();
+
   const payload = {
     date,
     title: $('day-plan-title').value.trim(),
     summary: $('day-plan-summary').value.trim(),
     notes: $('day-plan-notes').value.trim(),
-    plan_items_text: $('day-plan-items').value.trim()
+    plan_items_text: planItemsToLegacyText(planItems),
+    plan_items_json: planItems
   };
 
   day.title = payload.title;
   day.summary = payload.summary;
   day.notes = payload.notes;
   day.plan_items_text = payload.plan_items_text;
+  day.plan_items = payload.plan_items_json;
 
   if (supabaseClient) {
     const { error } = await supabaseClient.from(config.SUPABASE_ITINERARY_TABLE || 'itinerary_days').upsert(payload, { onConflict: 'date' });
@@ -1165,8 +1370,10 @@ function bindEvents() {
     renderSplitEditor();
     updateSplitPreview();
   });
-  $('toggle-spot-form').addEventListener('click', () => toggleSpotPanel('spot-form-panel', 'toggle-spot-form'));
-  $('toggle-spot-list').addEventListener('click', () => toggleSpotPanel('spot-list-panel', 'toggle-spot-list'));
+  $('toggle-spot-form').addEventListener('click', () => togglePanel('spot-form-panel', 'toggle-spot-form'));
+  $('toggle-spot-list').addEventListener('click', () => togglePanel('spot-list-panel', 'toggle-spot-list'));
+  $('toggle-day-detail').addEventListener('click', () => togglePanel('day-detail-panel', 'toggle-day-detail'));
+  $('toggle-day-plan').addEventListener('click', () => togglePanel('day-plan-panel', 'toggle-day-plan'));
   $('toggle-route-only').addEventListener('change', (event) => {
     routeOnlyMode = event.target.checked;
     updateMarkers(true);
@@ -1175,6 +1382,10 @@ function bindEvents() {
   $('day-plan-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     await saveDayPlan();
+    setPanelState('day-plan-panel', 'toggle-day-plan', false);
+  });
+  $('add-day-plan-item').addEventListener('click', () => {
+    $('day-plan-items-list').appendChild(createDayPlanItemEditor({}, getSelectedPlan().route));
   });
   $('expense-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1220,7 +1431,7 @@ function bindEvents() {
         if (index >= 0) spots.splice(index, 1, spot);
       }
       refreshSpotsUI({ focusSpotId: spot.id });
-      setSpotPanelState('spot-list-panel', 'toggle-spot-list', true);
+      setPanelState('spot-list-panel', 'toggle-spot-list', true);
       resetSpotForm();
       $('spot-status').textContent = `Spot gespeichert: ${spot.name}`;
     } catch (error) {
@@ -1229,17 +1440,11 @@ function bindEvents() {
     }
   });
   $('spot-cancel-edit').addEventListener('click', resetSpotForm);
-  $('clear-demo').addEventListener('click', () => {
-    if (supabaseClient) return alert('Supabase-Daten bitte direkt in Supabase löschen, damit nichts versehentlich verschwindet.');
-    localStorage.removeItem(LOCAL_EXPENSES_KEY);
-    renderExpenses();
-  });
 }
 
 async function bootstrap() {
   initSupabase();
   $('storage-hint').textContent = getStorageHintText();
-  $('clear-demo').hidden = Boolean(supabaseClient);
   if (!supabaseClient) spots = loadLocalSpots();
   await hydrateSpots();
   await hydrateItineraryPlans();
@@ -1256,8 +1461,10 @@ async function bootstrap() {
   locateUser(true, false);
   renderSpotList();
   resetSpotForm();
-  setSpotPanelState('spot-form-panel', 'toggle-spot-form', false);
-  setSpotPanelState('spot-list-panel', 'toggle-spot-list', false);
+  setPanelState('spot-form-panel', 'toggle-spot-form', false);
+  setPanelState('spot-list-panel', 'toggle-spot-list', false);
+  setPanelState('day-detail-panel', 'toggle-day-detail', true);
+  setPanelState('day-plan-panel', 'toggle-day-plan', false);
   renderExpenses();
 }
 

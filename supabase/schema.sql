@@ -57,14 +57,24 @@ create table if not exists public.itinerary_days (
   summary text not null,
   notes text not null default '',
   plan_items_text text not null default '',
+  plan_items_json jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.itinerary_days
+  add column if not exists plan_items_json jsonb not null default '[]'::jsonb;
 
 alter table public.expenses enable row level security;
 alter table public.expense_splits enable row level security;
 alter table public.spots enable row level security;
 alter table public.itinerary_days enable row level security;
+
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on public.expenses to anon, authenticated;
+grant select, insert, update, delete on public.expense_splits to anon, authenticated;
+grant select, insert, update, delete on public.spots to anon, authenticated;
+grant select, insert, update, delete on public.itinerary_days to anon, authenticated;
 
 drop policy if exists "anon expenses read" on public.expenses;
 create policy "anon expenses read"

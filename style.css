@@ -144,7 +144,7 @@ button, .map-link {
 .map-layout { display: grid; grid-template-columns: 320px 1fr; gap: 18px; min-height: 650px; }
 .filters-panel { padding: 22px; }
 .filters-panel label { display: flex; align-items: center; gap: 10px; padding: 10px 0; font-weight: 800; }
-.filters-panel input { transform: scale(1.1); }
+.filters-panel input { width: auto; transform: scale(1.1); }
 select, input { width: 100%; border: 1px solid var(--line); border-radius: 16px; padding: 13px 14px; font: inherit; background: #fff; }
 #map { min-height: 650px; border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid #fff; overflow: hidden; }
 .nearby-list { margin-top: 14px; display: grid; gap: 10px; color: var(--muted); }
@@ -339,6 +339,7 @@ footer { padding: 28px clamp(18px, 5vw, 70px); border-top: 1px solid var(--line)
   .spot-admin-controls > * { width: 100%; }
   .spot-form-actions > * { width: 100%; }
   .spot-item-header { flex-direction: column; }
+  .day-plan-item-grid { grid-template-columns: 1fr; }
 }
 
 .crew-hero {
@@ -449,6 +450,44 @@ footer { padding: 28px clamp(18px, 5vw, 70px); border-top: 1px solid var(--line)
   font-weight: 900;
   display: grid;
   gap: 7px;
+}
+.day-plan-items-list {
+  display: grid;
+  gap: 12px;
+}
+.day-plan-item {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px;
+  background: #fff;
+  display: grid;
+  gap: 10px;
+}
+.day-plan-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+.day-plan-item-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.day-plan-item-grid .full {
+  grid-column: 1 / -1;
+}
+.day-plan-type-fields[hidden] {
+  display: none !important;
+}
+.day-plan-route-list,
+.day-plan-note-list {
+  margin: 14px 0 0;
+  padding-left: 18px;
+}
+.day-plan-route-list li,
+.day-plan-note-list li {
+  margin-bottom: 10px;
 }
 .route-active-marker .marker-pin {
   outline: 4px solid rgba(255, 107, 53, .4);

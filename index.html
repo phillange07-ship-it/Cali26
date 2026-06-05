@@ -107,7 +107,14 @@
         <h2>Geplante Routen</h2>
       </div>
       <div id="day-picker" class="day-picker"></div>
-      <div id="selected-day-detail" class="selected-day-detail"></div>
+      <div class="spot-admin-controls">
+        <button class="secondary" type="button" id="toggle-day-detail" aria-expanded="true" aria-controls="day-detail-panel">Tagesdetails</button>
+        <button class="secondary" type="button" id="toggle-day-plan" aria-expanded="false" aria-controls="day-plan-panel">Tag planen</button>
+      </div>
+      <div id="day-detail-panel" class="spot-panel">
+        <div id="selected-day-detail" class="selected-day-detail"></div>
+      </div>
+      <div id="day-plan-panel" class="spot-panel" hidden>
       <form id="day-plan-form" class="day-plan-form">
         <div class="field-heading">
           <strong>Tag gemeinsam planen</strong>
@@ -123,12 +130,16 @@
         <label>Planungsnotizen
           <textarea id="day-plan-notes" rows="4" placeholder="Einkaufsliste, Parken, Tickets, spontane Ideen ..."></textarea>
         </label>
-        <label>Geplante Punkte
-          <textarea id="day-plan-items" rows="6" placeholder="Jede Zeile wird ein Planungspunkt, z. B.&#10;Morgens einkaufen&#10;Zur Unterkunft zurück&#10;Santa Monica Pier&#10;Abends Tacos"></textarea>
-        </label>
+        <div class="field-heading">
+          <strong>Geplante Punkte</strong>
+          <small>Jeder Punkt kann eine freie Notiz, ein bestehender Spot oder eine Adresse mit eigenem Routenlink sein.</small>
+        </div>
+        <div id="day-plan-items-list" class="day-plan-items-list"></div>
+        <button class="secondary" type="button" id="add-day-plan-item">Punkt hinzufügen</button>
         <button class="primary" type="submit">Tag speichern</button>
         <p class="hint" id="day-plan-status">Diese Planung wird mit allen geteilt.</p>
       </form>
+      </div>
     </section>
 
     <section class="section" id="spots-admin">
@@ -187,7 +198,7 @@
       <div class="section-title">
         <p class="eyebrow">Kosten teilen</p>
         <h2>Ausgaben</h2>
-        <p>Gemeinsame Ausgaben, Beteiligte und Bons werden hier fuer eure Reise gesammelt.</p>
+        <p>Gemeinsame Ausgaben, Beteiligte und Bons werden hier für eure Reise gesammelt.</p>
       </div>
 
       <div class="expense-layout">
@@ -243,7 +254,6 @@
         <div class="expense-results">
           <div class="card-header">
             <span>Übersicht</span>
-            <button class="tiny" id="clear-demo">Lokale Demo leeren</button>
           </div>
           <div id="expense-list"></div>
           <div id="settlement" class="settlement"></div>

@@ -7,6 +7,9 @@ Diese App kann komplett statisch auf GitHub Pages laufen. Supabase wird nur als 
 3. Den Inhalt aus [supabase/schema.sql](/home/phil/Downloads/la-travel-companion-fix-map-route/la-travel-companion/supabase/schema.sql:1) im SQL Editor ausführen.
 4. In [config.js](/home/phil/Downloads/la-travel-companion-fix-map-route/la-travel-companion/config.js:1) `SUPABASE_ENABLED`, `SUPABASE_URL` und `SUPABASE_ANON_KEY` setzen.
 
+**Falls `permission denied for table expenses` auftaucht**
+Fuehrt [supabase/schema.sql](/home/phil/Downloads/la-travel-companion-fix-map-route/la-travel-companion/supabase/schema.sql:1) noch einmal komplett aus. Die aktuelle Version enthaelt jetzt auch die noetigen `grant`-Befehle fuer `anon` und `authenticated`.
+
 **Storage Policies**
 Für einen einfachen gemeinsamen Urlaubsbetrieb ohne Login:
 
