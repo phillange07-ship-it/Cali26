@@ -68,3 +68,6 @@ Die aktuellen UI-Felder speichern schon Zahler, Betrag, Beschreibung und optiona
 
 **Spots**
 Neue Versionen der App speichern fuer Spots optional auch `address`. Wenn euer Supabase-Projekt schon laeuft, fuehrt [schema.sql](/home/phil/Downloads/la-travel-companion-fix-map-route/la-travel-companion/supabase/schema.sql:1) einfach noch einmal aus. Durch `add column if not exists` ist das migrationssicher.
+
+**Tagesplanung**
+Die App kann jetzt auch gemeinsame Tagesplanung aus `itinerary_days` laden und speichern. Dort koennen Titel, Kurzbeschreibung, Notizen und freie Planungspunkte pro Datum gemeinsam gepflegt werden. Wenn euer Supabase-Projekt schon besteht, fuehrt [schema.sql](/home/phil/Downloads/la-travel-companion-fix-map-route/la-travel-companion/supabase/schema.sql:1) einfach erneut aus.

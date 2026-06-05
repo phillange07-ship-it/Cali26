@@ -18,6 +18,7 @@ const byId = (id) => spots.find((s) => s.id === id);
 const tripLengthDays = itinerary.length;
 const LOCAL_EXPENSES_KEY = 'laExpenses';
 const LOCAL_SPOTS_KEY = 'laSpots';
+const LOCAL_ITINERARY_KEY = 'laItineraryDays';
 
 function initSupabase() {
   if (config.SUPABASE_ENABLED && config.SUPABASE_URL && config.SUPABASE_ANON_KEY && window.supabase) {
@@ -45,6 +46,38 @@ function loadLocalSpots() {
 
 function persistLocalSpots() {
   localStorage.setItem(LOCAL_SPOTS_KEY, JSON.stringify(spots));
+}
+
+function loadLocalItineraryOverrides() {
+  const stored = JSON.parse(localStorage.getItem(LOCAL_ITINERARY_KEY) || '[]');
+  return Array.isArray(stored) ? stored : [];
+}
+
+function persistLocalItineraryOverrides(rows) {
+  localStorage.setItem(LOCAL_ITINERARY_KEY, JSON.stringify(rows));
+}
+
+function applyItineraryOverrides(rows) {
+  rows.forEach((row) => {
+    const day = itinerary.find((entry) => entry.date === row.date);
+    if (!day) return;
+    day.title = row.title || day.title;
+    day.summary = row.summary || day.summary;
+    day.notes = row.notes || '';
+    day.plan_items_text = row.plan_items_text || '';
+  });
+}
+
+async function hydrateItineraryPlans() {
+  if (supabaseClient) {
+    const { data, error } = await supabaseClient.from(config.SUPABASE_ITINERARY_TABLE || 'itinerary_days').select('*');
+    if (!error) {
+      applyItineraryOverrides(data || []);
+      return;
+    }
+    console.warn('Tagesplanung konnte nicht aus Supabase geladen werden:', error.message);
+  }
+  applyItineraryOverrides(loadLocalItineraryOverrides());
 }
 
 function getTodayPlan() {
@@ -634,6 +667,16 @@ function renderToday() {
   renderTripStatus();
 }
 
+function fillDayPlanForm() {
+  const selected = getSelectedPlan();
+  $('day-plan-date').value = selected.date;
+  $('day-plan-title').value = selected.title || '';
+  $('day-plan-summary').value = selected.summary || '';
+  $('day-plan-notes').value = selected.notes || '';
+  $('day-plan-items').value = selected.plan_items_text || '';
+  $('day-plan-status').textContent = 'Diese Planung wird mit allen geteilt.';
+}
+
 function renderTripOverview() {
   const flightCards = flights.map((f) => `
     <article class="trip-card">
@@ -656,11 +699,6 @@ function renderTripOverview() {
 
   $('trip-overview').innerHTML = `
     ${flightCards}
-    <article class="trip-card">
-      <p class="eyebrow">Mietwagen</p>
-      <h3>${car.title}</h3>
-      <p>${car.note}</p>
-    </article>
     ${stayCards}
   `;
 }
@@ -700,8 +738,11 @@ function renderItinerary() {
     <p class="eyebrow">Ausgewählter Tag · ${new Date(selected.date + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' })}</p>
     <h3>${selected.title}</h3>
     <p>${selected.summary}</p>
+    ${selected.notes ? `<p>${selected.notes}</p>` : ''}
     <ol>${routeDetail}</ol>
+    ${selected.plan_items_text ? `<ul>${selected.plan_items_text.split('\n').map((item) => item.trim()).filter(Boolean).map((item) => `<li>${item}</li>`).join('')}</ul>` : ''}
   `;
+  fillDayPlanForm();
   renderTripStatus();
 }
 
@@ -993,7 +1034,7 @@ async function renderExpenses() {
   const expenses = await loadExpenses();
   $('expense-list').innerHTML = expenses.length ? expenses.map((e) => `
     <div class="expense-item">
-      <div><b>${e.description}</b><br><small>${e.person} · ${e.category} · ${new Date(e.date || e.created_at).toLocaleDateString('de-DE')}</small><br><small>${(e.splits?.length ? e.splits.map((split) => `${split.person}: ${currency(split.total_amount)}`).join(' · ') : `${e.participant_count || 1} Beteiligte`)}</small>${getReceiptUrl(e) ? `<br><a target="_blank" rel="noreferrer" href="${getReceiptUrl(e)}">Bon ansehen</a>` : ''}</div>
+      <div><b>${e.description}</b><br><small>${e.person} · ${e.category} · ${new Date(e.date || e.created_at).toLocaleDateString('de-DE')}</small><br><small>Ohne Tip: ${currency(e.subtotal_amount || Number(e.amount) - Number(e.tip_amount || 0))} · Tip: ${currency(e.tip_amount || 0)}${Number(e.participant_count || 0) > 0 ? ` · ${currency((Number(e.tip_amount || 0) / Number(e.participant_count || 1)) || 0)} pro Person` : ''}</small><br><small>${(e.splits?.length ? e.splits.map((split) => `${split.person}: ${currency(split.total_amount)} (${currency(split.food_amount || 0)} + ${currency(split.tip_amount || 0)} Tip)`).join(' · ') : `${e.participant_count || 1} Beteiligte`)}</small>${getReceiptUrl(e) ? `<br><a target="_blank" rel="noreferrer" href="${getReceiptUrl(e)}">Bon ansehen</a>` : ''}</div>
       <strong>${currency(e.amount)}</strong>
     </div>
   `).join('') : '<p class="hint">Noch keine Ausgaben eingetragen.</p>';
@@ -1003,21 +1044,27 @@ async function renderExpenses() {
 function renderSettlement(expenses) {
   const paidTotals = Object.fromEntries(people.map((p) => [p, 0]));
   const owedTotals = Object.fromEntries(people.map((p) => [p, 0]));
+  const tipTotals = Object.fromEntries(people.map((p) => [p, 0]));
+  let totalTip = 0;
 
   expenses.forEach((expense) => {
     paidTotals[expense.person] = (paidTotals[expense.person] || 0) + Number(expense.amount);
+    totalTip += Number(expense.tip_amount || 0);
 
     if (expense.splits?.length) {
       expense.splits.forEach((split) => {
         owedTotals[split.person] = (owedTotals[split.person] || 0) + Number(split.total_amount);
+        tipTotals[split.person] = (tipTotals[split.person] || 0) + Number(split.tip_amount || 0);
       });
       return;
     }
 
     const participants = expense.participants?.length ? expense.participants : people.slice(0, Number(expense.participant_count || people.length));
     const share = participants.length ? Number(expense.amount) / participants.length : Number(expense.amount);
+    const tipShare = participants.length ? Number(expense.tip_amount || 0) / participants.length : Number(expense.tip_amount || 0);
     participants.forEach((person) => {
       owedTotals[person] = (owedTotals[person] || 0) + share;
+      tipTotals[person] = (tipTotals[person] || 0) + tipShare;
     });
   });
 
@@ -1039,11 +1086,52 @@ function renderSettlement(expenses) {
 
   $('settlement').innerHTML = `
     <h3>Abrechnung</h3>
-    <p>Gesamt: <b>${currency(total)}</b> · Berechnet nach echten Beteiligungen pro Beleg.</p>
-    <div class="settlement-grid">${people.map(p => `<div class="settle-card"><b>${p}</b><br>${currency(paidTotals[p])} gezahlt<br>${currency(owedTotals[p])} konsumiert<br><small>${currency(balances.find((entry) => entry.person === p)?.balance || 0)} Balance</small></div>`).join('')}</div>
+    <p>Gesamt: <b>${currency(total)}</b> · Tip gesamt: <b>${currency(totalTip)}</b> · Berechnet nach echten Beteiligungen pro Beleg.</p>
+    <div class="settlement-grid">${people.map(p => `<div class="settle-card"><b>${p}</b><br>${currency(paidTotals[p])} gezahlt<br>${currency(owedTotals[p])} konsumiert<br>${currency(tipTotals[p])} Tip-Anteil<br><small>${currency(balances.find((entry) => entry.person === p)?.balance || 0)} Balance</small></div>`).join('')}</div>
     <h3>Wer zahlt wem?</h3>
+    <p class="hint">Die Liste zeigt die minimale Anzahl nötiger Ausgleichszahlungen, nicht jede denkbare Person-zu-Person-Kombination.</p>
     ${transfers.length ? `<ul>${transfers.map(t => `<li>${t}</li>`).join('')}</ul>` : '<p class="hint">Aktuell ist alles ausgeglichen oder es gibt noch keine Ausgaben.</p>'}
   `;
+}
+
+async function saveDayPlan() {
+  const date = $('day-plan-date').value;
+  const day = itinerary.find((entry) => entry.date === date);
+  if (!day) {
+    alert('Tag konnte nicht gefunden werden.');
+    return;
+  }
+
+  const payload = {
+    date,
+    title: $('day-plan-title').value.trim(),
+    summary: $('day-plan-summary').value.trim(),
+    notes: $('day-plan-notes').value.trim(),
+    plan_items_text: $('day-plan-items').value.trim()
+  };
+
+  day.title = payload.title;
+  day.summary = payload.summary;
+  day.notes = payload.notes;
+  day.plan_items_text = payload.plan_items_text;
+
+  if (supabaseClient) {
+    const { error } = await supabaseClient.from(config.SUPABASE_ITINERARY_TABLE || 'itinerary_days').upsert(payload, { onConflict: 'date' });
+    if (error) {
+      alert(`Tagesplanung konnte nicht gespeichert werden: ${error.message}`);
+      return;
+    }
+  } else {
+    const rows = loadLocalItineraryOverrides();
+    const index = rows.findIndex((entry) => entry.date === date);
+    if (index >= 0) rows.splice(index, 1, payload);
+    else rows.push(payload);
+    persistLocalItineraryOverrides(rows);
+  }
+
+  renderToday();
+  renderItinerary();
+  $('day-plan-status').textContent = 'Tag erfolgreich gespeichert.';
 }
 
 function bindEvents() {
@@ -1062,6 +1150,10 @@ function bindEvents() {
     routeOnlyMode = event.target.checked;
     updateMarkers(true);
     updateNearby();
+  });
+  $('day-plan-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await saveDayPlan();
   });
   $('expense-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1128,6 +1220,7 @@ async function bootstrap() {
   $('storage-hint').textContent = getStorageHintText();
   if (!supabaseClient) spots = loadLocalSpots();
   await hydrateSpots();
+  await hydrateItineraryPlans();
   selectedPlanDate = getTodayPlan().date;
   renderTripOverview();
   renderToday();

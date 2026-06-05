@@ -50,9 +50,21 @@ create table if not exists public.spots (
 alter table public.spots
   add column if not exists address text;
 
+create table if not exists public.itinerary_days (
+  date date primary key,
+  trip_code text not null default 'cali26-2026',
+  title text not null,
+  summary text not null,
+  notes text not null default '',
+  plan_items_text text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 alter table public.expenses enable row level security;
 alter table public.expense_splits enable row level security;
 alter table public.spots enable row level security;
+alter table public.itinerary_days enable row level security;
 
 drop policy if exists "anon expenses read" on public.expenses;
 create policy "anon expenses read"
@@ -99,8 +111,29 @@ to anon
 using (true)
 with check (true);
 
+drop policy if exists "anon itinerary_days read" on public.itinerary_days;
+create policy "anon itinerary_days read"
+on public.itinerary_days
+for select
+to anon
+using (true);
+
+drop policy if exists "anon itinerary_days write" on public.itinerary_days;
+create policy "anon itinerary_days write"
+on public.itinerary_days
+for all
+to anon
+using (true)
+with check (true);
+
 insert into public.spots (id, name, category, lat, lng, note)
 values
   ('lax', 'Los Angeles Airport LAX', 'travel', 33.9416, -118.4085, 'Ankunft, Rueckflug und Mietwagen-Abholung.'),
   ('san-gabriel-house', 'Gaestehaus San Gabriel', 'stay', 34.0961, -118.1058, 'Unterkunft 05.09.-12.09. · Check-in ab 15:00 · Check-out bis 11:00')
 on conflict (id) do nothing;
+
+insert into public.itinerary_days (date, title, summary, notes, plan_items_text)
+values
+  ('2026-09-05', 'Ankunft in LA', 'BER nach LAX, Mietwagen abholen und nach San Gabriel fahren.', '', ''),
+  ('2026-09-06', 'Santa Monica & Venice', 'Erster voller Tag am Wasser, entspannt starten.', '', '')
+on conflict (date) do nothing;

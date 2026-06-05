@@ -330,7 +330,7 @@ footer { padding: 28px clamp(18px, 5vw, 70px); border-top: 1px solid var(--line)
     top: 116px;
     padding: 10px 14px 0;
   }
-  .hero-text, .today-card, .filters-panel, .expense-form, .expense-results, .selected-day-detail, .trip-card, .spot-form, .spot-results { padding: 18px; }
+  .hero-text, .today-card, .filters-panel, .expense-form, .expense-results, .selected-day-detail, .trip-card, .spot-form, .spot-results, .day-plan-form { padding: 18px; }
   .hero-actions > * { width: 100%; }
   .status-pill { justify-content: center; width: 100%; }
   #map { min-height: 420px; }
@@ -432,6 +432,24 @@ footer { padding: 28px clamp(18px, 5vw, 70px); border-top: 1px solid var(--line)
   margin-bottom: 18px;
 }
 .selected-day-detail ol { margin-bottom: 0; }
+.selected-day-detail ul {
+  margin: 14px 0 0;
+  padding-left: 18px;
+}
+.day-plan-form {
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,.65);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.day-plan-form label {
+  font-weight: 900;
+  display: grid;
+  gap: 7px;
+}
 .route-active-marker .marker-pin {
   outline: 4px solid rgba(255, 107, 53, .4);
   transform: rotate(-45deg) scale(1.15);

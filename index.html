@@ -108,6 +108,27 @@
       </div>
       <div id="day-picker" class="day-picker"></div>
       <div id="selected-day-detail" class="selected-day-detail"></div>
+      <form id="day-plan-form" class="day-plan-form">
+        <div class="field-heading">
+          <strong>Tag gemeinsam planen</strong>
+          <small>Hier könnt ihr für den ausgewählten Tag gemeinsam Unternehmungen, Ideen und Ablauf festhalten.</small>
+        </div>
+        <input id="day-plan-date" type="hidden" />
+        <label>Titel
+          <input id="day-plan-title" type="text" placeholder="Tagestitel" required />
+        </label>
+        <label>Kurzbeschreibung
+          <input id="day-plan-summary" type="text" placeholder="Was ist grob geplant?" required />
+        </label>
+        <label>Planungsnotizen
+          <textarea id="day-plan-notes" rows="4" placeholder="Einkaufsliste, Parken, Tickets, spontane Ideen ..."></textarea>
+        </label>
+        <label>Geplante Punkte
+          <textarea id="day-plan-items" rows="6" placeholder="Jede Zeile wird ein Planungspunkt, z. B.&#10;Morgens einkaufen&#10;Zur Unterkunft zurück&#10;Santa Monica Pier&#10;Abends Tacos"></textarea>
+        </label>
+        <button class="primary" type="submit">Tag speichern</button>
+        <p class="hint" id="day-plan-status">Diese Planung wird mit allen geteilt.</p>
+      </form>
     </section>
 
     <section class="section" id="spots-admin">
