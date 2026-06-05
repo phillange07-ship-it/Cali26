@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cali26 Reisebegleiter</title>
+  <meta name="theme-color" content="#111827" />
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="assets/favicon.svg" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Roadtrip USA 2026</p>
+      <h1>Cali26 Reisebegleiter</h1>
+    </div>
+    <nav>
+      <a href="#today">Heute</a>
+      <a href="#map-section">Karte</a>
+      <a href="#trip-info">Trip</a>
+      <a href="#expenses">Ausgaben</a>
+    </nav>
+  </header>
+
+  <nav class="quick-nav" aria-label="Schnellnavigation">
+    <a href="#today">Heute</a>
+    <a href="#map-section">Karte</a>
+    <a href="#spots-admin">Spots</a>
+    <a href="#daily-plans">Route</a>
+    <a href="#expenses">Ausgaben</a>
+  </nav>
+
+  <main>
+    <section class="crew-hero">
+      <img src="assets/cali26-crew.jpg" alt="Cali26 Crew Foto" />
+      <div class="crew-overlay">
+        <p class="eyebrow">Crew unterwegs</p>
+        <span>Cali26</span>
+        <p id="homebase-summary">Tag, Unterkunft und Wechsel werden geladen.</p>
+      </div>
+    </section>
+
+    <section class="hero" id="today">
+      <div class="hero-text">
+        <p class="badge" id="trip-day-badge">Tag wird geladen</p>
+        <h2 id="today-title">Was läuft heute?</h2>
+        <p id="today-summary">Die Website lädt automatisch den Tagesplan passend zum Datum.</p>
+        <div id="trip-status-grid" class="status-grid"></div>
+        <div class="hero-actions">
+          <button class="primary" id="locate-btn">Standort aktivieren</button>
+          <button class="secondary" id="show-all-btn">Alle Spots anzeigen</button>
+          <span id="location-status" class="status-pill">Standort noch nicht aktiv</span>
+        </div>
+      </div>
+      <div class="today-card">
+        <div class="card-header">
+          <span>Heutige Route</span>
+          <strong id="today-date-label">--</strong>
+        </div>
+        <ol id="today-route-list"></ol>
+      </div>
+    </section>
+
+    <section class="section trip-info" id="trip-info">
+      <div class="section-title">
+        <p class="eyebrow">Reisebasis</p>
+        <h2>Flug, Unterkünfte & Mietwagen</h2>
+      </div>
+      <div id="trip-overview" class="trip-overview"></div>
+    </section>
+
+    <section class="section" id="map-section">
+      <div class="section-title">
+        <p class="eyebrow">Spots & Kategorien</p>
+        <h2>Interaktive Karte</h2>
+        <p>Filtere Kategorien, starte direkt die Navigation und prüfe unterwegs sofort, was in der Nähe liegt.</p>
+      </div>
+
+      <div class="map-layout">
+        <aside class="filters-panel">
+          <h3>Kategorien</h3>
+          <label><input type="checkbox" id="toggle-all" checked /> Alle anzeigen</label>
+          <div id="category-filters"></div>
+          <hr />
+          <h3>Routenansicht</h3>
+          <label><input type="checkbox" id="toggle-route-only" /> Nur Spots vom ausgewählten Tag</label>
+          <p class="hint">Hilfreich, wenn ihr unterwegs nur den Tagesplan sehen wollt.</p>
+          <hr />
+          <h3>In der Nähe</h3>
+          <select id="nearby-radius">
+            <option value="500">500 m</option>
+            <option value="1000" selected>1 km</option>
+            <option value="3000">3 km</option>
+            <option value="5000">5 km</option>
+          </select>
+          <div id="nearby-list" class="nearby-list">Standort aktivieren, dann werden Spots in der Nähe angezeigt.</div>
+        </aside>
+        <div id="map"></div>
+      </div>
+    </section>
+
+    <section class="section" id="daily-plans">
+      <div class="section-title">
+        <p class="eyebrow">Tagesplanung</p>
+        <h2>Geplante Routen</h2>
+      </div>
+      <div id="day-picker" class="day-picker"></div>
+      <div id="selected-day-detail" class="selected-day-detail"></div>
+    </section>
+
+    <section class="section" id="spots-admin">
+      <div class="section-title">
+        <p class="eyebrow">Spots verwalten</p>
+        <h2>Neue Orte direkt eintragen</h2>
+        <p>Adresse oder Google-Maps-Link einfügen, Kategorie wählen und direkt für alle speichern.</p>
+      </div>
+
+      <div class="spot-admin-controls">
+        <button class="secondary" type="button" id="toggle-spot-form" aria-expanded="false" aria-controls="spot-form-panel">Spot hinzufügen</button>
+        <button class="secondary" type="button" id="toggle-spot-list" aria-expanded="false" aria-controls="spot-list-panel">Gespeicherte Spots</button>
+      </div>
+
+      <div class="spot-admin-layout">
+        <div id="spot-form-panel" class="spot-panel" hidden>
+        <form id="spot-form" class="spot-form">
+          <div class="field-heading">
+            <strong id="spot-form-title">Neuen Spot anlegen</strong>
+            <small>Die App ermittelt Koordinaten automatisch aus Adresse oder Maps-Link.</small>
+          </div>
+          <input id="spot-id" type="hidden" />
+          <label>Name
+            <input id="spot-name" type="text" placeholder="In-N-Out Burbank" required />
+          </label>
+          <label>Kategorie
+            <select id="spot-category" required></select>
+          </label>
+          <label>Adresse oder Google Maps Link
+            <textarea id="spot-address" rows="3" placeholder="1600 Amphitheatre Pkwy, Mountain View, CA oder Google Maps Link" required></textarea>
+          </label>
+          <label>Beschreibung
+            <textarea id="spot-note" rows="3" placeholder="Warum ist der Spot interessant?" required></textarea>
+          </label>
+          <div class="spot-form-actions">
+            <button class="primary" type="submit" id="spot-submit">Spot speichern</button>
+            <button class="secondary" type="button" id="spot-cancel-edit" hidden>Bearbeitung abbrechen</button>
+          </div>
+          <p class="hint" id="spot-status">Neue Spots erscheinen direkt auf Karte, in Nearby und in den Filtern.</p>
+        </form>
+        </div>
+
+        <div id="spot-list-panel" class="spot-panel" hidden>
+        <div class="spot-results">
+          <div class="card-header">
+            <span>Gespeicherte Spots</span>
+            <strong id="spot-count">0 Spots</strong>
+          </div>
+          <div id="spot-list" class="spot-list"></div>
+        </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="expenses">
+      <div class="section-title">
+        <p class="eyebrow">Kosten teilen</p>
+        <h2>Ausgaben</h2>
+        <p>Demo funktioniert lokal. Mit Supabase werden die Einträge für alle 4 synchronisiert.</p>
+      </div>
+
+      <div class="expense-layout">
+        <form id="expense-form" class="expense-form">
+          <h3>Neue Ausgabe</h3>
+          <label>Bezahlt von
+            <select id="expense-person" required></select>
+          </label>
+          <label>Datum
+            <input id="expense-date" type="date" required />
+          </label>
+          <label>Gesamtbetrag
+            <input id="expense-amount" type="number" step="0.01" min="0" placeholder="80.00" required />
+          </label>
+          <label>Tip
+            <input id="expense-tip" type="number" step="0.01" min="0" value="0" placeholder="10.00" />
+          </label>
+          <label>Beschreibung
+            <input id="expense-description" type="text" placeholder="In-N-Out, Uber, Tickets..." required />
+          </label>
+          <label>Kategorie
+            <select id="expense-category">
+              <option>Food</option>
+              <option>Transport</option>
+              <option>Tickets</option>
+              <option>Shopping</option>
+              <option>Hotel</option>
+              <option>Sonstiges</option>
+            </select>
+          </label>
+          <label>Aufteilung
+            <select id="expense-split-mode">
+              <option value="equal">Gleich auf Beteiligte verteilen</option>
+              <option value="custom">Individuelle Anteile pro Person</option>
+            </select>
+          </label>
+          <div class="expense-participants-block">
+            <div class="field-heading">
+              <strong>Beteiligte Personen</strong>
+              <small>Nur diese Personen teilen sich den Beleg.</small>
+            </div>
+            <div id="expense-participants" class="participant-grid"></div>
+          </div>
+          <div id="split-editor" class="split-editor"></div>
+          <div id="split-preview" class="split-preview hint"></div>
+          <label>Bon-Foto
+            <input id="expense-receipt" type="file" accept="image/*" />
+          </label>
+          <button class="primary" type="submit">Ausgabe speichern</button>
+          <p class="hint" id="storage-hint">Aktuell: lokaler Demo-Speicher. Supabase kann in config.js aktiviert werden.</p>
+        </form>
+
+        <div class="expense-results">
+          <div class="card-header">
+            <span>Übersicht</span>
+            <button class="tiny" id="clear-demo">Demo leeren</button>
+          </div>
+          <div id="expense-list"></div>
+          <div id="settlement" class="settlement"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <strong>LA Travel Companion</strong>
+    <span>GitHub Pages + Leaflet + Supabase-ready</span>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
