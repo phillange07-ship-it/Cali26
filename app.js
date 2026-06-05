@@ -258,7 +258,7 @@ function getTripPhaseSummary() {
 
 function getStorageHintText() {
   if (supabaseClient) {
-    return 'Aktuell: Supabase aktiv. GitHub Pages bleibt statisch, Ausgaben, Beteiligte und Bon-Fotos laufen direkt über Supabase.';
+    return '';
   }
   if (config.SUPABASE_ENABLED) {
     return 'Supabase ist konfiguriert, konnte aber hier gerade nicht initialisiert werden. Bitte Seite hart neu laden.';
@@ -373,7 +373,7 @@ function renderParticipantSelector() {
   $('expense-participants').innerHTML = people.map((person) => `
     <label class="participant-chip">
       <input class="participant-toggle" type="checkbox" value="${person}" checked />
-      <span>${person}<small>${person} ist an diesem Beleg beteiligt</small></span>
+      <span>${person}<small> ist an diesem Beleg beteiligt</small></span>
     </label>
   `).join('');
 
@@ -1309,9 +1309,9 @@ function renderSettlement(expenses) {
   $('settlement').innerHTML = `
     <h3>Abrechnung</h3>
     <p>Gesamt: <b>${currency(total)}</b> · Tip gesamt: <b>${currency(totalTip)}</b> · Berechnet nach echten Beteiligungen pro Beleg.</p>
-    <div class="settlement-grid">${people.map(p => `<div class="settle-card"><b>${p}</b><br>${currency(paidTotals[p])} gezahlt<br>${currency(owedTotals[p])} konsumiert<br>${currency(tipTotals[p])} Tip-Anteil<br><small>${currency(balances.find((entry) => entry.person === p)?.balance || 0)} Balance</small></div>`).join('')}</div>
+    <div class="settlement-grid">${people.map(p => `<div class="settle-card"><b>${p}</b><br>${currency(paidTotals[p])} gezahlt<br>${currency(owedTotals[p])} verbraucht<br>${currency(tipTotals[p])} Tip-Anteil<br><small>${currency(balances.find((entry) => entry.person === p)?.balance || 0)} Balance</small></div>`).join('')}</div>
     <h3>Wer zahlt wem?</h3>
-    <p class="hint">Die Liste ist belegbasiert: Jede Person zahlt an die Person zurück, die den jeweiligen Beleg vorgestreckt hat. Gegenseitige Schulden zwischen denselben zwei Personen werden dabei verrechnet.</p>
+    <p class="hint">Die Liste ist belegbasiert: Jede Person zahlt an die Person zurück, die vorgestreckt hat.</p>
     ${transfers.length ? `<ul>${transfers.map(t => `<li>${t}</li>`).join('')}</ul>` : '<p class="hint">Aktuell ist alles ausgeglichen oder es gibt noch keine Ausgaben.</p>'}
   `;
 }
