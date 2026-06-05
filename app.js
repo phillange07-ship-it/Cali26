@@ -24,7 +24,12 @@ function initSupabase() {
   if (config.SUPABASE_ENABLED && config.SUPABASE_URL && config.SUPABASE_ANON_KEY && window.supabase) {
     supabaseClient = window.supabase.createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
     $('storage-hint').textContent = getStorageHintText();
+    return;
   }
+
+  $('storage-hint').textContent = config.SUPABASE_ENABLED
+    ? 'Supabase ist konfiguriert, konnte aber hier gerade nicht initialisiert werden. Bitte Seite hart neu laden.'
+    : getStorageHintText();
 }
 
 async function hydrateSpots() {
@@ -197,6 +202,9 @@ function getTripPhaseSummary() {
 function getStorageHintText() {
   if (supabaseClient) {
     return 'Aktuell: Supabase aktiv. GitHub Pages bleibt statisch, Ausgaben, Beteiligte und Bon-Fotos laufen direkt ueber Supabase.';
+  }
+  if (config.SUPABASE_ENABLED) {
+    return 'Supabase ist konfiguriert, konnte aber hier gerade nicht initialisiert werden. Bitte Seite hart neu laden.';
   }
   return 'Aktuell: lokaler Demo-Speicher. Fuer gemeinsame Ausgaben, Beteiligte und Bon-Fotos bitte Supabase in config.js aktivieren.';
 }
@@ -1045,7 +1053,14 @@ function renderSettlement(expenses) {
   const paidTotals = Object.fromEntries(people.map((p) => [p, 0]));
   const owedTotals = Object.fromEntries(people.map((p) => [p, 0]));
   const tipTotals = Object.fromEntries(people.map((p) => [p, 0]));
+  const pairwiseClaims = new Map();
   let totalTip = 0;
+
+  function addPairwiseClaim(from, to, amount) {
+    if (!from || !to || from === to || amount <= 0.009) return;
+    const key = `${from}__${to}`;
+    pairwiseClaims.set(key, (pairwiseClaims.get(key) || 0) + amount);
+  }
 
   expenses.forEach((expense) => {
     paidTotals[expense.person] = (paidTotals[expense.person] || 0) + Number(expense.amount);
@@ -1055,6 +1070,7 @@ function renderSettlement(expenses) {
       expense.splits.forEach((split) => {
         owedTotals[split.person] = (owedTotals[split.person] || 0) + Number(split.total_amount);
         tipTotals[split.person] = (tipTotals[split.person] || 0) + Number(split.tip_amount || 0);
+        addPairwiseClaim(split.person, expense.person, Number(split.total_amount || 0));
       });
       return;
     }
@@ -1065,31 +1081,36 @@ function renderSettlement(expenses) {
     participants.forEach((person) => {
       owedTotals[person] = (owedTotals[person] || 0) + share;
       tipTotals[person] = (tipTotals[person] || 0) + tipShare;
+      addPairwiseClaim(person, expense.person, share);
     });
   });
 
   const total = Object.values(paidTotals).reduce((a, b) => a + b, 0);
   const balances = people.map((p) => ({ person: p, balance: paidTotals[p] - owedTotals[p] }));
-
-  let debtors = balances.filter(b => b.balance < -0.01).map(b => ({...b, balance: -b.balance}));
-  let creditors = balances.filter(b => b.balance > 0.01);
   const transfers = [];
-  debtors.forEach((d) => {
-    creditors.forEach((c) => {
-      if (d.balance <= 0 || c.balance <= 0) return;
-      const amount = Math.min(d.balance, c.balance);
-      transfers.push(`${d.person} zahlt ${amount.toFixed(2)} $ an ${c.person}`);
-      d.balance -= amount;
-      c.balance -= amount;
-    });
+
+  pairwiseClaims.forEach((amount, key) => {
+    const [from, to] = key.split('__');
+    const reverseKey = `${to}__${from}`;
+    if (pairwiseClaims.has(reverseKey) && key > reverseKey) return;
+
+    const reverseAmount = pairwiseClaims.get(reverseKey) || 0;
+    const net = amount - reverseAmount;
+    if (net > 0.009) {
+      transfers.push(`${from} zahlt ${currency(net)} an ${to}`);
+    } else if (net < -0.009) {
+      transfers.push(`${to} zahlt ${currency(Math.abs(net))} an ${from}`);
+    }
   });
+
+  transfers.sort((a, b) => a.localeCompare(b, 'de'));
 
   $('settlement').innerHTML = `
     <h3>Abrechnung</h3>
     <p>Gesamt: <b>${currency(total)}</b> · Tip gesamt: <b>${currency(totalTip)}</b> · Berechnet nach echten Beteiligungen pro Beleg.</p>
     <div class="settlement-grid">${people.map(p => `<div class="settle-card"><b>${p}</b><br>${currency(paidTotals[p])} gezahlt<br>${currency(owedTotals[p])} konsumiert<br>${currency(tipTotals[p])} Tip-Anteil<br><small>${currency(balances.find((entry) => entry.person === p)?.balance || 0)} Balance</small></div>`).join('')}</div>
     <h3>Wer zahlt wem?</h3>
-    <p class="hint">Die Liste zeigt die minimale Anzahl nötiger Ausgleichszahlungen, nicht jede denkbare Person-zu-Person-Kombination.</p>
+    <p class="hint">Die Liste ist belegbasiert: Jede Person zahlt an die Person zurueck, die den jeweiligen Beleg vorgestreckt hat. Gegenseitige Schulden zwischen denselben zwei Personen werden dabei verrechnet.</p>
     ${transfers.length ? `<ul>${transfers.map(t => `<li>${t}</li>`).join('')}</ul>` : '<p class="hint">Aktuell ist alles ausgeglichen oder es gibt noch keine Ausgaben.</p>'}
   `;
 }
@@ -1218,6 +1239,7 @@ function bindEvents() {
 async function bootstrap() {
   initSupabase();
   $('storage-hint').textContent = getStorageHintText();
+  $('clear-demo').hidden = Boolean(supabaseClient);
   if (!supabaseClient) spots = loadLocalSpots();
   await hydrateSpots();
   await hydrateItineraryPlans();
