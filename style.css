@@ -61,7 +61,14 @@ h2 { font-size: clamp(1.7rem, 4.5vw, 3.3rem); line-height: .96; letter-spacing: 
 h3 { margin-bottom: 10px; }
 a { color: inherit; }
 nav { display: flex; gap: 16px; font-weight: 800; }
-nav a { text-decoration: none; padding: 10px 14px; border-radius: 999px; }
+nav a {
+  text-decoration: none;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.88);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 28px rgba(16, 24, 39, .08);
+}
 nav a:hover { background: #fff; }
 
 main { padding: 28px clamp(18px, 5vw, 70px) 70px; }
