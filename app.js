@@ -41,7 +41,14 @@ async function hydrateSpots() {
   }
   if (Array.isArray(data) && data.length) {
     const merged = new Map(initialSpots.map((spot) => [spot.id, spot]));
-    data.forEach((spot) => merged.set(spot.id, { ...merged.get(spot.id), ...spot }));
+    data.forEach((spot) => {
+      const localSpot = merged.get(spot.id);
+      if (localSpot && ['stay', 'travel'].includes(localSpot.category)) {
+        merged.set(spot.id, { ...spot, ...localSpot });
+        return;
+      }
+      merged.set(spot.id, { ...localSpot, ...spot });
+    });
     spots = Array.from(merged.values());
   }
 }
