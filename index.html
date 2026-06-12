@@ -9,7 +9,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.APP_VERSION = "2026-06-12-2";
+    window.APP_VERSION = "2026-06-12-6";
     try {
       const key = "cali26-app-version";
       const previous = localStorage.getItem(key);
@@ -27,8 +27,8 @@
   </script>
   <link rel="preconnect" href="https://unpkg.com" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=2026-06-12-2" />
-  <link rel="icon" href="assets/favicon.svg?v=2026-06-12-2" />
+  <link rel="stylesheet" href="style.css?v=2026-06-12-6" />
+  <link rel="icon" href="assets/favicon.svg?v=2026-06-12-6" />
 </head>
 <body>
   <header class="app-header">
@@ -81,7 +81,7 @@
           <span>Heutige Route</span>
           <strong id="today-date-label">--</strong>
         </div>
-        <ol id="today-route-list"></ol>
+        <ol id="today-route-list" class="timeline-list"></ol>
       </div>
     </section>
 
@@ -154,7 +154,7 @@
         </label>
         <div class="field-heading">
           <strong>Geplante Punkte</strong>
-          <small>Jeder Punkt kann eine freie Notiz, ein bestehender Spot oder eine Adresse mit eigenem Routenlink sein.</small>
+          <small>Am besten legt ihr Orte zuerst unter Spots an und wählt sie hier dann in eurer Tagesreihenfolge aus. Freie Notizen und Adressen gehen zusätzlich weiterhin.</small>
         </div>
         <div id="day-plan-items-list" class="day-plan-items-list"></div>
         <button class="secondary" type="button" id="add-day-plan-item">Punkt hinzufügen</button>
@@ -291,8 +291,8 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=2026-06-12-2"></script>
-  <script src="data.js?v=2026-06-12-2"></script>
-  <script src="app.js?v=2026-06-12-2"></script>
+  <script src="config.js?v=2026-06-12-6"></script>
+  <script src="data.js?v=2026-06-12-6"></script>
+  <script src="app.js?v=2026-06-12-6"></script>
 </body>
 </html>
