@@ -139,9 +139,9 @@ with check (true);
 insert into public.spots (id, name, category, address, lat, lng, note)
 values
   ('lax', 'Los Angeles Airport LAX', 'travel', '', 33.9416, -118.4085, 'Ankunft, Rueckflug und Mietwagen-Abholung.'),
-  ('san-gabriel-house', 'Gaestehaus San Gabriel', 'stay', '1231 Lafayette Street, San Gabriel, CA 91776', 34.0961, -118.1058, 'Unterkunft 05.09.-12.09. · Check-in ab 15:00 · Check-out bis 11:00'),
-  ('las-vegas-condo', 'Eigentumswohnung Las Vegas', 'stay', '8445 Las Vegas Boulevard South, Las Vegas, NV 89123', 36.1716, -115.1391, 'Unterkunft 12.09.-15.09. · Check-in ab 16:00 · Check-out bis 11:00'),
-  ('san-diego-house', 'Haus San Diego', 'stay', '3438 C Street, San Diego, CA 92102', 32.7157, -117.1611, 'Unterkunft 15.09.-19.09. · Check-in ab 15:00 · Check-out bis 11:00')
+  ('san-gabriel-house', 'Gaestehaus San Gabriel', 'stay', '1231 Lafayette Street, San Gabriel, CA 91776', 34.085038, -118.09478, 'Unterkunft 05.09.-12.09. · Check-in ab 15:00 · Check-out bis 11:00'),
+  ('las-vegas-condo', 'Eigentumswohnung Las Vegas', 'stay', '8445 Las Vegas Boulevard South, Las Vegas, NV 89123', 36.0360463, -115.1742481, 'Unterkunft 12.09.-15.09. · Check-in ab 16:00 · Check-out bis 11:00'),
+  ('san-diego-house', 'Haus San Diego', 'stay', '3438 C Street, San Diego, CA 92102', 32.7173898, -117.1201655, 'Unterkunft 15.09.-19.09. · Check-in ab 15:00 · Check-out bis 11:00')
 on conflict (id) do nothing;
 
 insert into public.itinerary_days (date, title, summary, notes, plan_items_text)

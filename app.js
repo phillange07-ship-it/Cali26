@@ -21,6 +21,11 @@ const LOCAL_SPOTS_KEY = 'laSpots';
 const LOCAL_ITINERARY_KEY = 'laItineraryDays';
 const LOCAL_FIXED_GEOCODE_KEY = 'laFixedGeocodes';
 const APP_VERSION = window.APP_VERSION || '2026-06-12-2';
+const FIXED_STAY_COORD_OVERRIDES = {
+  'san-gabriel-house': { lat: 34.085038, lng: -118.09478 },
+  'las-vegas-condo': { lat: 36.0360463, lng: -115.1742481 },
+  'san-diego-house': { lat: 32.7173898, lng: -117.1201655 }
+};
 
 function initSupabase() {
   if (config.SUPABASE_ENABLED && config.SUPABASE_URL && config.SUPABASE_ANON_KEY && window.supabase) {
@@ -472,7 +477,7 @@ async function syncFixedAccommodationCoordinates() {
   for (const stay of accommodations) {
     if (!stay.address) continue;
 
-    let coords = cache[stay.id];
+    let coords = FIXED_STAY_COORD_OVERRIDES[stay.id] || cache[stay.id];
     if (!coords) {
       try {
         const geocoded = await geocodeSpotInput(stay.address);
@@ -486,6 +491,7 @@ async function syncFixedAccommodationCoordinates() {
 
     stay.lat = coords.lat;
     stay.lng = coords.lng;
+    cache[stay.id] = coords;
   }
 
   spots.forEach((spot) => {
