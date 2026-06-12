@@ -20,7 +20,7 @@ const LOCAL_EXPENSES_KEY = 'laExpenses';
 const LOCAL_SPOTS_KEY = 'laSpots';
 const LOCAL_ITINERARY_KEY = 'laItineraryDays';
 const LOCAL_FIXED_GEOCODE_KEY = 'laFixedGeocodes';
-const APP_VERSION = window.APP_VERSION || '2026-06-12-10';
+const APP_VERSION = window.APP_VERSION || '2026-06-12-11';
 const FIXED_STAY_COORD_OVERRIDES = {
   'san-gabriel-house': { lat: 34.085038, lng: -118.09478 },
   'las-vegas-condo': { lat: 36.0360463, lng: -115.1742481 },
@@ -153,6 +153,7 @@ function normalizePlanItems(value, fallbackText = '') {
       type: item.type || 'note',
       title: item.title || '',
       spot_id: item.spot_id || '',
+      route_id: item.route_id || '',
       address: item.address || '',
       note: item.note || '',
       done: Boolean(item.done)
@@ -177,6 +178,7 @@ function normalizePlanItems(value, fallbackText = '') {
         type: 'note',
         title,
         spot_id: '',
+        route_id: '',
         address: '',
         note: '',
         done: false
@@ -260,6 +262,18 @@ function getPlanItemsForDay(day = getSelectedPlan()) {
   return day.plan_items;
 }
 
+function getEditablePlanItems(day = getSelectedPlan()) {
+  return getPlanItemsForDay(day).filter((item) => item.type !== 'fixed_status');
+}
+
+function getFixedRouteStatusMap(day = getSelectedPlan()) {
+  return new Map(
+    getPlanItemsForDay(day)
+      .filter((item) => item.type === 'fixed_status' && item.route_id)
+      .map((item) => [item.route_id, Boolean(item.done)])
+  );
+}
+
 function getCombinedRouteIds(day = getSelectedPlan()) {
   const seen = new Set();
   const ids = [];
@@ -270,7 +284,7 @@ function getCombinedRouteIds(day = getSelectedPlan()) {
   };
 
   (day.route || []).forEach(addId);
-  getPlanItemsForDay(day)
+  getEditablePlanItems(day)
     .filter((item) => item.type === 'spot' && item.spot_id)
     .forEach((item) => addId(item.spot_id));
 
@@ -282,19 +296,21 @@ function getCombinedRouteSpots(day = getSelectedPlan()) {
 }
 
 function getTimelineEntries(day = getSelectedPlan()) {
+  const fixedStatusMap = getFixedRouteStatusMap(day);
   const fixedEntries = (day.route || []).map((spotId, index) => ({
     key: `fixed-${spotId}-${index}`,
     kind: 'fixed-spot',
     stepType: 'base',
     title: '',
     note: '',
-    done: false,
-    itemId: null,
+    done: Boolean(fixedStatusMap.get(spotId)),
+    itemId: `fixed::${spotId}`,
     spot: byId(spotId),
-    address: ''
+    address: '',
+    canToggle: !['stay', 'travel'].includes(byId(spotId)?.category || '')
   }));
 
-  const plannedEntries = getPlanItemsForDay(day).map((item) => ({
+  const plannedEntries = getEditablePlanItems(day).map((item) => ({
     key: item.id,
     kind: item.type || 'note',
     stepType: 'planned',
@@ -303,22 +319,24 @@ function getTimelineEntries(day = getSelectedPlan()) {
     done: Boolean(item.done),
     itemId: item.id,
     spot: item.type === 'spot' && item.spot_id ? byId(item.spot_id) : null,
-    address: item.address || ''
+    address: item.address || '',
+    canToggle: true
   }));
 
-  const firstPendingIndex = plannedEntries.findIndex((entry) => !entry.done);
+  const firstPendingIndex = [...fixedEntries, ...plannedEntries].findIndex((entry) => entry.canToggle && !entry.done);
   return [...fixedEntries, ...plannedEntries].map((entry, index) => ({
     ...entry,
     index,
-    isNext: entry.stepType === 'planned' && firstPendingIndex >= 0 && plannedEntries[firstPendingIndex]?.itemId === entry.itemId
+    isNext: firstPendingIndex >= 0 && [...fixedEntries, ...plannedEntries][firstPendingIndex]?.itemId === entry.itemId
   }));
 }
 
 function getPlannedProgress(day = getSelectedPlan()) {
-  const plannedEntries = getTimelineEntries(day).filter((entry) => entry.stepType === 'planned');
-  const doneCount = plannedEntries.filter((entry) => entry.done).length;
-  const nextEntry = plannedEntries.find((entry) => !entry.done) || null;
-  return { total: plannedEntries.length, doneCount, nextEntry };
+  const actionableEntries = getTimelineEntries(day).filter((entry) => entry.canToggle);
+  const doneCount = actionableEntries.filter((entry) => entry.done).length;
+  const nextEntry = actionableEntries.find((entry) => !entry.done) || null;
+  const total = actionableEntries.length;
+  return { total, doneCount, nextEntry };
 }
 
 function getFocusedRouteSpotId(day = getSelectedPlan()) {
@@ -398,7 +416,7 @@ function renderTimelineItem(entry) {
     ? '<span class="timeline-badge">Basis</span>'
     : (entry.done ? '<span class="timeline-badge">Erledigt</span>' : (entry.isNext ? '<span class="timeline-badge">Als Nächstes</span>' : '<span class="timeline-badge">Offen</span>'));
 
-  const action = entry.stepType === 'planned'
+  const action = entry.canToggle
     ? `<button class="secondary timeline-toggle" type="button" data-toggle-plan-item="${escapeHtml(entry.itemId)}">${entry.done ? 'Wieder offen' : 'Erledigt'}</button>`
     : '';
 
@@ -1049,7 +1067,7 @@ function renderToday() {
 
 function fillDayPlanForm() {
   const selected = getSelectedPlan();
-  selected.plan_items = getPlanItemsForDay(selected);
+  selected.plan_items = getEditablePlanItems(selected);
   $('day-plan-date').value = selected.date;
   $('day-plan-title').value = selected.title || '';
   $('day-plan-summary').value = selected.summary || '';
@@ -1064,6 +1082,7 @@ function buildDayPlanItem(item = {}) {
     type: item.type || 'spot',
     title: item.title || '',
     spot_id: item.spot_id || '',
+    route_id: item.route_id || '',
     address: item.address || '',
     note: item.note || '',
     done: Boolean(item.done)
@@ -1242,7 +1261,7 @@ function renderItinerary() {
     ${selected.notes ? `<p>${selected.notes}</p>` : ''}
     <div class="timeline-summary">
       <span><b>${combinedRouteSpots.length}</b> Spot${combinedRouteSpots.length === 1 ? '' : 's'} in der Tagesroute</span>
-      <span><b>${progress.doneCount}/${progress.total}</b> geplante Punkte erledigt</span>
+      <span><b>${progress.doneCount}/${progress.total}</b> abhakbare Punkte erledigt</span>
       <span>${progress.nextEntry ? `Als Nächstes: ${escapeHtml(describeTimelineEntry(progress.nextEntry).title)}` : 'Alle geplanten Punkte erledigt'}</span>
     </div>
     <h4>Tagesablauf</h4>
@@ -1668,6 +1687,8 @@ async function saveDayPlan() {
   }
 
   const planItems = collectDayPlanItems();
+  const fixedStatusItems = getPlanItemsForDay(day).filter((item) => item.type === 'fixed_status');
+  const allPlanItems = [...fixedStatusItems, ...planItems];
 
   const payload = {
     date,
@@ -1675,7 +1696,7 @@ async function saveDayPlan() {
     summary: $('day-plan-summary').value.trim(),
     notes: $('day-plan-notes').value.trim(),
     plan_items_text: planItemsToLegacyText(planItems),
-    plan_items_json: planItems
+    plan_items_json: allPlanItems
   };
 
   day.title = payload.title;
@@ -1714,12 +1735,38 @@ async function togglePlanItemDone(date, itemId) {
   const day = itinerary.find((entry) => entry.date === date);
   if (!day) return;
 
-  const planItems = getPlanItemsForDay(day).map((item) => (
-    item.id === itemId ? { ...item, done: !item.done } : item
-  ));
+  const currentItems = getPlanItemsForDay(day);
+  let planItems;
+
+  if (itemId.startsWith('fixed::')) {
+    const routeId = itemId.replace('fixed::', '');
+    const existing = currentItems.find((item) => item.type === 'fixed_status' && item.route_id === routeId);
+    if (existing) {
+      planItems = currentItems.map((item) => (
+        item.type === 'fixed_status' && item.route_id === routeId
+          ? { ...item, done: !item.done }
+          : item
+      ));
+    } else {
+      planItems = [...currentItems, {
+        id: crypto.randomUUID(),
+        type: 'fixed_status',
+        title: '',
+        spot_id: '',
+        route_id: routeId,
+        address: '',
+        note: '',
+        done: true
+      }];
+    }
+  } else {
+    planItems = currentItems.map((item) => (
+      item.id === itemId ? { ...item, done: !item.done } : item
+    ));
+  }
 
   day.plan_items = planItems;
-  day.plan_items_text = planItemsToLegacyText(planItems);
+  day.plan_items_text = planItemsToLegacyText(planItems.filter((item) => item.type !== 'fixed_status'));
 
   const payload = {
     date,
