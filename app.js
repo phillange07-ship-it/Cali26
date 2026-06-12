@@ -89,6 +89,35 @@ async function checkForAppUpdate() {
   }
 }
 
+function flashNavigationTarget(hash) {
+  if (!hash) return;
+  const links = Array.from(document.querySelectorAll(`.app-header a[href="${hash}"], .quick-nav a[href="${hash}"]`));
+  const target = document.querySelector(hash);
+  if (!target) return;
+
+  links.forEach((link) => link.classList.add('nav-flash'));
+  target.classList.add('section-flash');
+
+  window.setTimeout(() => {
+    links.forEach((link) => link.classList.remove('nav-flash'));
+    target.classList.remove('section-flash');
+  }, 1400);
+}
+
+function bindSectionNavigation() {
+  document.querySelectorAll('.app-header a[href^="#"], .quick-nav a[href^="#"]').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      const hash = link.getAttribute('href');
+      const target = hash ? document.querySelector(hash) : null;
+      if (!target) return;
+      event.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      history.replaceState(null, '', hash);
+      flashNavigationTarget(hash);
+    });
+  });
+}
+
 function escapeHtml(value = '') {
   return String(value)
     .replaceAll('&', '&amp;')
@@ -1012,12 +1041,16 @@ function makeIcon(spot) {
 
 function googleMapsLink(spot) {
   const destination = spot.address ? encodeURIComponent(spot.address) : `${spot.lat},${spot.lng}`;
-  const origin = userPosition ? `&origin=${userPosition.lat},${userPosition.lng}` : '';
+  const includeOrigin = userPosition && spot.lat != null && spot.lng != null
+    ? distanceMeters(userPosition, spot) <= 250000
+    : Boolean(userPosition);
+  const origin = includeOrigin && userPosition ? `&origin=${userPosition.lat},${userPosition.lng}` : '';
   return `https://www.google.com/maps/dir/?api=1${origin}&destination=${destination}&travelmode=driving`;
 }
 
 function googleMapsAddressLink(address) {
-  const origin = userPosition ? `&origin=${userPosition.lat},${userPosition.lng}` : '';
+  const { duringTrip } = getLiveTripWindow();
+  const origin = duringTrip && userPosition ? `&origin=${userPosition.lat},${userPosition.lng}` : '';
   return `https://www.google.com/maps/dir/?api=1${origin}&destination=${encodeURIComponent(address)}&travelmode=driving`;
 }
 
@@ -1523,6 +1556,7 @@ async function bootstrap() {
   fillPeople();
   initMap();
   bindEvents();
+  bindSectionNavigation();
   updateMarkers(true);
   locateUser(true, false);
   renderSpotList();
@@ -1532,6 +1566,7 @@ async function bootstrap() {
   setPanelState('day-detail-panel', 'toggle-day-detail', true);
   setPanelState('day-plan-panel', 'toggle-day-plan', false);
   renderExpenses();
+  if (window.location.hash) flashNavigationTarget(window.location.hash);
 }
 
 bootstrap();

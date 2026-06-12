@@ -22,6 +22,11 @@ body {
   color: var(--text);
 }
 
+.hero,
+.section {
+  scroll-margin-top: 122px;
+}
+
 .app-header {
   position: sticky;
   top: 0;
@@ -53,6 +58,31 @@ body {
   border: 1px solid var(--line);
   box-shadow: 0 10px 28px rgba(16, 24, 39, .08);
   font-weight: 900;
+}
+.nav-flash {
+  background: var(--accent-2) !important;
+  color: #fff !important;
+  border-color: var(--accent-2) !important;
+  transition: all .25s ease;
+}
+.section-flash .section-title,
+.section-flash .hero-text {
+  animation: sectionFlash 1.2s ease;
+}
+
+@keyframes sectionFlash {
+  0% {
+    transform: translateY(0);
+    box-shadow: none;
+  }
+  30% {
+    transform: translateY(-2px);
+    box-shadow: 0 0 0 4px rgba(255, 107, 53, .18);
+  }
+  100% {
+    transform: translateY(0);
+    box-shadow: none;
+  }
 }
 
 h1, h2, h3, p { margin-top: 0; }
@@ -152,6 +182,10 @@ button, .map-link {
 .filters-panel { padding: 22px; }
 .filters-panel label { display: flex; align-items: center; gap: 10px; padding: 10px 0; font-weight: 800; }
 .filters-panel input { width: auto; transform: scale(1.1); }
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 400;
+}
 select, input { width: 100%; border: 1px solid var(--line); border-radius: 16px; padding: 13px 14px; font: inherit; background: #fff; }
 #map { min-height: 650px; border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid #fff; overflow: hidden; }
 .nearby-list { margin-top: 14px; display: grid; gap: 10px; color: var(--muted); }
@@ -216,14 +250,19 @@ textarea {
 }
 .participant-chip {
   display: grid;
-  grid-template-columns: 18px 1fr;
-  gap: 10px;
+  grid-template-columns: 22px 1fr;
+  gap: 12px;
   align-items: start;
   padding: 10px 12px;
   border-radius: 14px;
   background: #fff;
   border: 1px solid var(--line);
   font-weight: 800;
+}
+.participant-chip span {
+  display: grid;
+  gap: 6px;
+  line-height: 1.35;
 }
 .participant-chip input {
   width: auto;
@@ -332,6 +371,10 @@ footer { padding: 28px clamp(18px, 5vw, 70px); border-top: 1px solid var(--line)
 }
 
 @media (max-width: 640px) {
+  .hero,
+  .section {
+    scroll-margin-top: 168px;
+  }
   .app-header nav {
     flex-wrap: wrap;
     gap: 8px;
