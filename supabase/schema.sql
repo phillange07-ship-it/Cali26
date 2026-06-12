@@ -136,10 +136,10 @@ to anon
 using (true)
 with check (true);
 
-insert into public.spots (id, name, category, lat, lng, note)
+insert into public.spots (id, name, category, address, lat, lng, note)
 values
-  ('lax', 'Los Angeles Airport LAX', 'travel', 33.9416, -118.4085, 'Ankunft, Rueckflug und Mietwagen-Abholung.'),
-  ('san-gabriel-house', 'Gaestehaus San Gabriel', 'stay', 34.0961, -118.1058, 'Unterkunft 05.09.-12.09. · Check-in ab 15:00 · Check-out bis 11:00')
+  ('lax', 'Los Angeles Airport LAX', 'travel', '', 33.9416, -118.4085, 'Ankunft, Rueckflug und Mietwagen-Abholung.'),
+  ('san-gabriel-house', 'Gaestehaus San Gabriel', 'stay', '1231 Lafayette Street, San Gabriel, CA 91776', 34.0961, -118.1058, 'Unterkunft 05.09.-12.09. · Check-in ab 15:00 · Check-out bis 11:00')
 on conflict (id) do nothing;
 
 insert into public.itinerary_days (date, title, summary, notes, plan_items_text)

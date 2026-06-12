@@ -30,9 +30,9 @@ window.TRIP_DATA = {
     note: "Abholung direkt am Flughafen LAX. Hauptverkehrsmittel zwischen LA, Las Vegas und San Diego."
   },
   accommodations: [
-    { id: "san-gabriel-house", city: "San Gabriel", name: "Gästehaus in San Gabriel", start: "2026-09-05", end: "2026-09-12", checkin: "15:00", checkout: "11:00", lat: 34.0961, lng: -118.1058 },
-    { id: "las-vegas-condo", city: "Las Vegas", name: "Eigentumswohnung in Las Vegas", start: "2026-09-12", end: "2026-09-15", checkin: "16:00", checkout: "11:00", lat: 36.1716, lng: -115.1391 },
-    { id: "san-diego-house", city: "San Diego", name: "Haus in San Diego", start: "2026-09-15", end: "2026-09-19", checkin: "15:00", checkout: "11:00", lat: 32.7157, lng: -117.1611 }
+    { id: "san-gabriel-house", city: "San Gabriel", name: "Gästehaus in San Gabriel", start: "2026-09-05", end: "2026-09-12", checkin: "15:00", checkout: "11:00", lat: 34.0961, lng: -118.1058, address: "1231 Lafayette Street, San Gabriel, CA 91776" },
+    { id: "las-vegas-condo", city: "Las Vegas", name: "Eigentumswohnung in Las Vegas", start: "2026-09-12", end: "2026-09-15", checkin: "16:00", checkout: "11:00", lat: 36.1716, lng: -115.1391, address: "8445 Las Vegas Boulevard South, Las Vegas, NV 89123" },
+    { id: "san-diego-house", city: "San Diego", name: "Haus in San Diego", start: "2026-09-15", end: "2026-09-19", checkin: "15:00", checkout: "11:00", lat: 32.7157, lng: -117.1611, address: "3438 C Street, San Diego, CA 92102" }
   ],
   categories: {
     food: { label: "Food", icon: "🍔", color: "#ef4444" },
@@ -46,9 +46,9 @@ window.TRIP_DATA = {
   },
   spots: [
     { id: "lax", name: "Los Angeles Airport LAX", category: "travel", lat: 33.9416, lng: -118.4085, note: "Ankunft, Rückflug und Mietwagen-Abholung." },
-    { id: "san-gabriel-house", name: "Gästehaus San Gabriel", category: "stay", lat: 34.0961, lng: -118.1058, note: "Unterkunft 05.09.–12.09. · Check-in ab 15:00 · Check-out bis 11:00" },
-    { id: "las-vegas-condo", name: "Eigentumswohnung Las Vegas", category: "stay", lat: 36.1716, lng: -115.1391, note: "Unterkunft 12.09.–15.09. · Check-in ab 16:00 · Check-out bis 11:00" },
-    { id: "san-diego-house", name: "Haus San Diego", category: "stay", lat: 32.7157, lng: -117.1611, note: "Unterkunft 15.09.–19.09. · Check-in ab 15:00 · Check-out bis 11:00" },
+    { id: "san-gabriel-house", name: "Gästehaus San Gabriel", category: "stay", lat: 34.0961, lng: -118.1058, address: "1231 Lafayette Street, San Gabriel, CA 91776", note: "Unterkunft 05.09.–12.09. · Check-in ab 15:00 · Check-out bis 11:00" },
+    { id: "las-vegas-condo", name: "Eigentumswohnung Las Vegas", category: "stay", lat: 36.1716, lng: -115.1391, address: "8445 Las Vegas Boulevard South, Las Vegas, NV 89123", note: "Unterkunft 12.09.–15.09. · Check-in ab 16:00 · Check-out bis 11:00" },
+    { id: "san-diego-house", name: "Haus San Diego", category: "stay", lat: 32.7157, lng: -117.1611, address: "3438 C Street, San Diego, CA 92102", note: "Unterkunft 15.09.–19.09. · Check-in ab 15:00 · Check-out bis 11:00" },
     { id: "santa-monica-pier", name: "Santa Monica Pier", category: "sightseeing", lat: 34.0101, lng: -118.4962, note: "Klassiker am Wasser. Perfekt zum Ankommen." },
     { id: "venice-beach", name: "Venice Beach", category: "sightseeing", lat: 33.9850, lng: -118.4695, note: "Boardwalk, Strand, Street-Vibe." },
     { id: "muscle-beach", name: "Muscle Beach", category: "photo", lat: 33.9855, lng: -118.4729, note: "Guter kurzer Foto-/Video-Stopp." },

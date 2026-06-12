@@ -321,10 +321,47 @@ function extractQueryFromMapsLink(value) {
       const param = url.searchParams.get(key);
       if (param) return param;
     }
+
+    const placeMatch = decodeURIComponent(url.pathname).match(/\/place\/([^/]+)/);
+    if (placeMatch?.[1]) {
+      return placeMatch[1].replaceAll('+', ' ').trim();
+    }
+
+    const pathSegments = decodeURIComponent(url.pathname)
+      .split('/')
+      .map((segment) => segment.trim())
+      .filter(Boolean)
+      .filter((segment) => !['maps', 'place', 'search', 'dir'].includes(segment.toLowerCase()));
+    if (pathSegments.length) {
+      return pathSegments[pathSegments.length - 1].replaceAll('+', ' ').trim();
+    }
   } catch {
     return '';
   }
   return '';
+}
+
+function normalizeAddressQuery(value) {
+  return value
+    .replace(/^https?:\/\/\S+$/i, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\bUSA\b/gi, '')
+    .replace(/\bUnited States\b/gi, '')
+    .replace(/\s+-\s+/g, ' ')
+    .trim()
+    .replace(/^"+|"+$/g, '');
+}
+
+function getGeocodingCandidates(rawInput) {
+  const trimmed = rawInput.trim();
+  const fromLink = extractQueryFromMapsLink(trimmed);
+  const candidates = [
+    trimmed,
+    fromLink,
+    normalizeAddressQuery(fromLink || trimmed)
+  ].filter(Boolean);
+
+  return [...new Set(candidates)];
 }
 
 async function geocodeSpotInput(rawInput) {
@@ -332,29 +369,32 @@ async function geocodeSpotInput(rawInput) {
   const directCoords = extractCoordsFromText(trimmed);
   if (directCoords) return { ...directCoords, resolvedLabel: trimmed };
 
-  const query = extractQueryFromMapsLink(trimmed) || trimmed;
-  const params = new URLSearchParams({
-    q: query,
-    format: 'jsonv2',
-    limit: '1',
-    countrycodes: 'us',
-    addressdetails: '1'
-  });
-  const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-    headers: { 'Accept-Language': 'de,en;q=0.8' }
-  });
-  if (!response.ok) {
-    throw new Error(`Geocoding fehlgeschlagen (${response.status})`);
+  const candidates = getGeocodingCandidates(trimmed);
+  for (const query of candidates) {
+    const params = new URLSearchParams({
+      q: query,
+      format: 'jsonv2',
+      limit: '1',
+      countrycodes: 'us',
+      addressdetails: '1'
+    });
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+      headers: { 'Accept-Language': 'de,en;q=0.8' }
+    });
+    if (!response.ok) {
+      throw new Error(`Geocoding fehlgeschlagen (${response.status})`);
+    }
+    const results = await response.json();
+    if (Array.isArray(results) && results.length) {
+      return {
+        lat: Number(results[0].lat),
+        lng: Number(results[0].lon),
+        resolvedLabel: results[0].display_name || query
+      };
+    }
   }
-  const results = await response.json();
-  if (!Array.isArray(results) || !results.length) {
-    throw new Error('Kein passender Ort gefunden. Bitte Adresse oder Maps-Link prüfen.');
-  }
-  return {
-    lat: Number(results[0].lat),
-    lng: Number(results[0].lon),
-    resolvedLabel: results[0].display_name || query
-  };
+
+  throw new Error('Kein passender Ort gefunden. Bitte Adresse oder Maps-Link prüfen.');
 }
 
 function currency(value) {
@@ -946,7 +986,7 @@ function makeIcon(spot) {
 }
 
 function googleMapsLink(spot) {
-  const destination = `${spot.lat},${spot.lng}`;
+  const destination = spot.address ? encodeURIComponent(spot.address) : `${spot.lat},${spot.lng}`;
   const origin = userPosition ? `&origin=${userPosition.lat},${userPosition.lng}` : '';
   return `https://www.google.com/maps/dir/?api=1${origin}&destination=${destination}&travelmode=driving`;
 }

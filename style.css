@@ -38,7 +38,7 @@ body {
   position: sticky;
   top: 80px;
   z-index: 850;
-  display: flex;
+  display: none;
   gap: 10px;
   overflow-x: auto;
   padding: 10px clamp(18px, 5vw, 70px) 0;
@@ -325,6 +325,17 @@ footer { padding: 28px clamp(18px, 5vw, 70px); border-top: 1px solid var(--line)
 }
 
 @media (max-width: 640px) {
+  .app-header nav {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .app-header nav a {
+    padding: 8px 12px;
+    font-size: .95rem;
+  }
+  .quick-nav {
+    display: flex;
+  }
   main { padding: 18px 14px 48px; }
   .quick-nav {
     top: 116px;
