@@ -19,6 +19,7 @@ const tripLengthDays = itinerary.length;
 const LOCAL_EXPENSES_KEY = 'laExpenses';
 const LOCAL_SPOTS_KEY = 'laSpots';
 const LOCAL_ITINERARY_KEY = 'laItineraryDays';
+const APP_VERSION = window.APP_VERSION || '2026-06-12-2';
 
 function initSupabase() {
   if (config.SUPABASE_ENABLED && config.SUPABASE_URL && config.SUPABASE_ANON_KEY && window.supabase) {
@@ -69,6 +70,23 @@ function loadLocalItineraryOverrides() {
 
 function persistLocalItineraryOverrides(rows) {
   localStorage.setItem(LOCAL_ITINERARY_KEY, JSON.stringify(rows));
+}
+
+async function checkForAppUpdate() {
+  try {
+    const response = await fetch(`version.json?v=${encodeURIComponent(APP_VERSION)}`, { cache: 'no-store' });
+    if (!response.ok) return;
+    const data = await response.json();
+    const remoteVersion = data?.version;
+    if (!remoteVersion || remoteVersion === APP_VERSION) return;
+
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('cv') === remoteVersion) return;
+    url.searchParams.set('cv', remoteVersion);
+    window.location.replace(url.toString());
+  } catch {
+    // still fine offline / with flaky connectivity
+  }
 }
 
 function escapeHtml(value = '') {
@@ -1490,6 +1508,7 @@ function bindEvents() {
 }
 
 async function bootstrap() {
+  checkForAppUpdate();
   initSupabase();
   $('storage-hint').textContent = getStorageHintText();
   if (!supabaseClient) spots = loadLocalSpots();

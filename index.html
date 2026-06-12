@@ -5,10 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cali26 Reisebegleiter</title>
   <meta name="theme-color" content="#111827" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <script>
+    window.APP_VERSION = "2026-06-12-2";
+    try {
+      const key = "cali26-app-version";
+      const previous = localStorage.getItem(key);
+      const current = window.APP_VERSION;
+      const url = new URL(window.location.href);
+      const forceValue = url.searchParams.get("cv");
+      if (previous && previous !== current && forceValue !== current) {
+        url.searchParams.set("cv", current);
+        localStorage.setItem(key, current);
+        window.location.replace(url.toString());
+      } else {
+        localStorage.setItem(key, current);
+      }
+    } catch {}
+  </script>
   <link rel="preconnect" href="https://unpkg.com" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=2026-06-12-1" />
-  <link rel="icon" href="assets/favicon.svg?v=2026-06-12-1" />
+  <link rel="stylesheet" href="style.css?v=2026-06-12-2" />
+  <link rel="icon" href="assets/favicon.svg?v=2026-06-12-2" />
 </head>
 <body>
   <header class="app-header">
@@ -271,8 +291,8 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=2026-06-12-1"></script>
-  <script src="data.js?v=2026-06-12-1"></script>
-  <script src="app.js?v=2026-06-12-1"></script>
+  <script src="config.js?v=2026-06-12-2"></script>
+  <script src="data.js?v=2026-06-12-2"></script>
+  <script src="app.js?v=2026-06-12-2"></script>
 </body>
 </html>
