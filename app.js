@@ -19,6 +19,7 @@ const tripLengthDays = itinerary.length;
 const LOCAL_EXPENSES_KEY = 'laExpenses';
 const LOCAL_SPOTS_KEY = 'laSpots';
 const LOCAL_ITINERARY_KEY = 'laItineraryDays';
+const LOCAL_FIXED_GEOCODE_KEY = 'laFixedGeocodes';
 const APP_VERSION = window.APP_VERSION || '2026-06-12-2';
 
 function initSupabase() {
@@ -70,6 +71,19 @@ function loadLocalItineraryOverrides() {
 
 function persistLocalItineraryOverrides(rows) {
   localStorage.setItem(LOCAL_ITINERARY_KEY, JSON.stringify(rows));
+}
+
+function loadFixedGeocodeCache() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(LOCAL_FIXED_GEOCODE_KEY) || '{}');
+    return stored && typeof stored === 'object' ? stored : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistFixedGeocodeCache(cache) {
+  localStorage.setItem(LOCAL_FIXED_GEOCODE_KEY, JSON.stringify(cache));
 }
 
 async function checkForAppUpdate() {
@@ -449,6 +463,40 @@ async function geocodeSpotInput(rawInput) {
   }
 
   throw new Error('Kein passender Ort gefunden. Bitte Adresse oder Maps-Link prüfen.');
+}
+
+async function syncFixedAccommodationCoordinates() {
+  const cache = loadFixedGeocodeCache();
+  const stayLikeIds = new Set(accommodations.map((stay) => stay.id));
+
+  for (const stay of accommodations) {
+    if (!stay.address) continue;
+
+    let coords = cache[stay.id];
+    if (!coords) {
+      try {
+        const geocoded = await geocodeSpotInput(stay.address);
+        coords = { lat: geocoded.lat, lng: geocoded.lng };
+        cache[stay.id] = coords;
+      } catch (error) {
+        console.warn(`Unterkunft konnte nicht geocodet werden: ${stay.name}`, error);
+        continue;
+      }
+    }
+
+    stay.lat = coords.lat;
+    stay.lng = coords.lng;
+  }
+
+  spots.forEach((spot) => {
+    if (!stayLikeIds.has(spot.id) || !spot.address) return;
+    const coords = cache[spot.id];
+    if (!coords) return;
+    spot.lat = coords.lat;
+    spot.lng = coords.lng;
+  });
+
+  persistFixedGeocodeCache(cache);
 }
 
 function currency(value) {
@@ -1546,6 +1594,7 @@ async function bootstrap() {
   $('storage-hint').textContent = getStorageHintText();
   if (!supabaseClient) spots = loadLocalSpots();
   await hydrateSpots();
+  await syncFixedAccommodationCoordinates();
   await hydrateItineraryPlans();
   selectedPlanDate = getTodayPlan().date;
   renderTripOverview();
