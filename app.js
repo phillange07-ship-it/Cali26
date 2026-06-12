@@ -20,15 +20,12 @@ const LOCAL_EXPENSES_KEY = 'laExpenses';
 const LOCAL_SPOTS_KEY = 'laSpots';
 const LOCAL_ITINERARY_KEY = 'laItineraryDays';
 const LOCAL_FIXED_GEOCODE_KEY = 'laFixedGeocodes';
-const APP_VERSION = window.APP_VERSION || '2026-06-12-6';
+const APP_VERSION = window.APP_VERSION || '2026-06-12-10';
 const FIXED_STAY_COORD_OVERRIDES = {
   'san-gabriel-house': { lat: 34.085038, lng: -118.09478 },
   'las-vegas-condo': { lat: 36.0360463, lng: -115.1742481 },
   'san-diego-house': { lat: 32.7173898, lng: -117.1201655 }
 };
-let routePolyline = null;
-let routeOutlinePolyline = null;
-let activeRouteRequestId = 0;
 
 function initSupabase() {
   if (config.SUPABASE_ENABLED && config.SUPABASE_URL && config.SUPABASE_ANON_KEY && window.supabase) {
@@ -282,30 +279,6 @@ function getCombinedRouteIds(day = getSelectedPlan()) {
 
 function getCombinedRouteSpots(day = getSelectedPlan()) {
   return getCombinedRouteIds(day).map(byId).filter(Boolean);
-}
-
-function buildDayRouteWaypoints(day = getSelectedPlan()) {
-  const waypoints = [];
-  const seen = new Set();
-  const activeStay = getActiveAccommodation(day.date);
-
-  const addPoint = (point, type = 'spot') => {
-    if (!point || point.lat == null || point.lng == null) return;
-    const key = point.id || `${point.lat.toFixed(5)},${point.lng.toFixed(5)}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    waypoints.push({
-      id: point.id || key,
-      name: point.name || point.city || 'Punkt',
-      lat: Number(point.lat),
-      lng: Number(point.lng),
-      type
-    });
-  };
-
-  addPoint(activeStay, 'stay');
-  getCombinedRouteSpots(day).forEach((spot) => addPoint(spot, 'spot'));
-  return waypoints;
 }
 
 function getTimelineEntries(day = getSelectedPlan()) {
@@ -1339,72 +1312,6 @@ function popupMarkup(spot) {
   `;
 }
 
-function clearRouteOverlay() {
-  if (routePolyline && map?.hasLayer(routePolyline)) map.removeLayer(routePolyline);
-  if (routeOutlinePolyline && map?.hasLayer(routeOutlinePolyline)) map.removeLayer(routeOutlinePolyline);
-  routePolyline = null;
-  routeOutlinePolyline = null;
-}
-
-function drawRouteOverlay(latlngs) {
-  clearRouteOverlay();
-  if (!map || !latlngs || latlngs.length < 2) return;
-
-  routeOutlinePolyline = L.polyline(latlngs, {
-    color: 'rgba(17, 24, 39, 0.24)',
-    weight: 10,
-    opacity: 0.9,
-    lineJoin: 'round',
-    lineCap: 'round'
-  }).addTo(map);
-
-  routePolyline = L.polyline(latlngs, {
-    color: '#ff6b35',
-    weight: 5,
-    opacity: 0.95,
-    lineJoin: 'round',
-    lineCap: 'round',
-    dashArray: '14 10'
-  }).addTo(map);
-
-  routeOutlinePolyline.bringToBack();
-  routePolyline.bringToFront();
-  markers.forEach((marker) => marker.bringToFront());
-  if (userMarker) userMarker.bringToFront();
-}
-
-async function updateRouteOverlay() {
-  if (!map) return;
-
-  const routeRequestId = ++activeRouteRequestId;
-  const waypoints = buildDayRouteWaypoints(getSelectedPlan());
-  if (waypoints.length < 2) {
-    clearRouteOverlay();
-    return;
-  }
-
-  const fallbackLatLngs = waypoints.map((point) => [point.lat, point.lng]);
-  const coordinates = waypoints.map((point) => `${point.lng},${point.lat}`).join(';');
-  const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson&steps=false`;
-
-  try {
-    const response = await fetch(url, { cache: 'no-store' });
-    if (!response.ok) throw new Error(`Routing-Status ${response.status}`);
-    const data = await response.json();
-    const geometry = data?.routes?.[0]?.geometry?.coordinates;
-    const latlngs = Array.isArray(geometry) && geometry.length
-      ? geometry.map(([lng, lat]) => [lat, lng])
-      : fallbackLatLngs;
-
-    if (routeRequestId !== activeRouteRequestId) return;
-    drawRouteOverlay(latlngs);
-  } catch (error) {
-    if (routeRequestId !== activeRouteRequestId) return;
-    console.warn('Tagesroute konnte nicht als Straßenroute geladen werden:', error.message || error);
-    drawRouteOverlay(fallbackLatLngs);
-  }
-}
-
 function buildSpotMarker(spot) {
   const marker = L.marker([spot.lat, spot.lng], { icon: makeIcon(spot) })
     .bindPopup(popupMarkup(spot));
@@ -1431,7 +1338,6 @@ function initMap() {
   }).addTo(map);
 
   spots.forEach(buildSpotMarker);
-  updateRouteOverlay();
 }
 
 function renderCategoryFilters() {
@@ -1468,7 +1374,6 @@ function updateMarkers(shouldFit = false) {
     }
     marker.setPopupContent(popupMarkup(spot));
   });
-  updateRouteOverlay();
   highlightSelectedRoute(shouldFit);
 }
 
